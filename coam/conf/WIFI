@@ -1,0 +1,7 @@
+sess_info_pref=N
+policy_pref=A
+policy_pref=N
+
+activation=ServiceActivate
+deactivation=ServiceDeActivate
+use_policy_attr_name=no

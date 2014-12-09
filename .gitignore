@@ -1,3 +1,12 @@
+# Visual Studio files
+*.suo
+*.sdf
+coam/*/Debug/
+coam/*/Release/
+coam/Debug/
+coam/Release/
+coam/ipch/
+
 # Windows image file caches
 Thumbs.db
 ehthumbs.db
