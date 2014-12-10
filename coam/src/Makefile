@@ -4,7 +4,7 @@ LIB=-lpthread -lclntsh
 OCI_H=-I$(ORACLE_HOME)/rdbms/public
 UTL_DIR=../../utils
 
-all: clean coas
+all: clean coam
 
 fast: coam
 
@@ -33,4 +33,4 @@ install:
 	cp -f ../coam /usr/local/bin/coam
 
 clean:
-	rm -f ./obj/*.o ../coas
+	rm -f ./obj/*.o ../coam

@@ -108,7 +108,11 @@ int OperateSubscriberSession (
 	CIPConnector &p_coIPConn,
 	otl_connect &p_coDBConn);
 int DeactivateNotrelevantPolicy (const SSubscriberRefresh &p_soRefreshRecord, const SSessionInfo &p_soSessionInfo, std::map<std::string,int> &p_soSessionPolicyList, CIPConnector &p_coIPConn);
-int ActivateInactivePolicy (const SSubscriberRefresh &p_soRefreshRecord, const SSessionInfo &p_soSessionInfo, std::map<SPolicyDetail,int> &p_mapPolicyDetail, CIPConnector &p_coIPConn);
+int ActivateInactivePolicy (
+	const SSubscriberRefresh &p_soRefreshRecord,
+	const SSessionInfo &p_soSessionInfo,
+	std::map<SPolicyDetail,int> &p_mapPolicyDetail,
+	CIPConnector &p_coIPConn);
 /* выборка из БД списка активных сессий подписчика */
 int CreateSessionList (const char *p_pcszSubscriberID, std::map<SSessionInfo,std::map<std::string,int> > *p_pmapSessList, otl_connect &p_coDBConn);
 int GetNASLocation (char *p_pszNASName, char *p_pszLocation, int p_iBufSize);
@@ -127,7 +131,9 @@ int ActivateService (
 	const char *p_pcszServiceInfo,
 	const char *p_pcszAttr,
 	CIPConnector *p_pcoIPConn);
-int AccountLogoff (const SSessionInfo *p_pcsoSessInfo, CIPConnector *p_pcoIPConn);
+int AccountLogoff (
+	const SSessionInfo *p_pcsoSessInfo,
+	CIPConnector *p_pcoIPConn);
 int CheckSession (const SSessionInfo *p_pcsoSessInfo, CIPConnector *p_pcoIPConn, otl_connect &p_coDBConn);
 int FixStuckSession (const SSessionInfo *p_pcsoSessInfo, otl_connect &p_coDBConn, bool p_bOpt = false);
 int ParsePSPack (const SPSRequest *p_pcsoResp, size_t p_stRespLen, int p_iFindResult = 1);

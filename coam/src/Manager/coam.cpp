@@ -642,7 +642,11 @@ int DeactivateNotrelevantPolicy (const SSubscriberRefresh &p_soRefreshRecord, co
 	return iRetVal;
 }
 
-int ActivateInactivePolicy (const SSubscriberRefresh &p_soRefreshRecord, const SSessionInfo &p_soSessionInfo, std::map<SPolicyDetail,int> &p_mapPolicyDetail, CIPConnector &p_coIPConn)
+int ActivateInactivePolicy (
+	const SSubscriberRefresh &p_soRefreshRecord,
+	const SSessionInfo &p_soSessionInfo,
+	std::map<SPolicyDetail,int> &p_mapPolicyDetail,
+	CIPConnector &p_coIPConn)
 {
 	int iRetVal = 0;
 
@@ -915,7 +919,7 @@ int SetCommonCoASensorAttr (SPSRequest *p_psoRequest, size_t p_stBufSize, const 
 		if (2 != p_pcoIPConn->GetStatus ()) {
 			iFnRes = ConnectCoASensor (*p_pcoIPConn);
 			if (iFnRes) {
-				iRetVal = -1;
+				iRetVal = iFnRes;
 				g_coLog.WriteLog ("SetCommonCoASensorAttr: can not connect to CoASensor");
 				break;
 			}
@@ -1153,15 +1157,16 @@ int ActivateService (
 	return iRetVal;
 }
 
-int AccountLogoff (const SSessionInfo *p_pcsoSessInfo, CIPConnector *p_pcoIPConn)
+int AccountLogoff (
+	const SSessionInfo *p_pcsoSessInfo,
+	CIPConnector *p_pcoIPConn)
 {
 	int iRetVal = 0;
 	char mcPack[0x10000];
-	int iValueLen;
+	__uint16_t ui16PackLen;
+	__uint16_t ui16ValueLen;
 	CPSPacket coPSPack;
 	SPSRequest *psoReq;
-	__uint16_t ui16PackLen;
-	__uint16_t ui16AttrLen;
 
 	ENTER_ROUT;
 
@@ -1170,8 +1175,8 @@ int AccountLogoff (const SSessionInfo *p_pcsoSessInfo, CIPConnector *p_pcoIPConn
 
 		// ищем конфигурацию локации
 		std::map<std::string,CConfig*>::iterator iterLocConf;
-		iterLocConf = g_mapLocationConf.find (p_pcsoSessInfo->m_mcLocation);
 		CConfig *pcoLocConf;
+		iterLocConf = g_mapLocationConf.find (p_pcsoSessInfo->m_mcLocation);
 		// если конфигурация локации не найдена
 		if (iterLocConf == g_mapLocationConf.end()) {
 			g_coLog.WriteLog ("AccountLogoff: Location '%s' configuration not found", p_pcsoSessInfo->m_mcLocation);
@@ -1187,8 +1192,8 @@ int AccountLogoff (const SSessionInfo *p_pcsoSessInfo, CIPConnector *p_pcoIPConn
 		}
 
 		// добавляем атрибут PS_COMMAND
-		ui16AttrLen = strlen (CMD_ACCNT_LOGOFF);
-		ui16PackLen = coPSPack.AddAttr (psoReq, sizeof(mcPack), PS_COMMAND, CMD_ACCNT_LOGOFF, ui16AttrLen, 0);
+		ui16ValueLen = strlen (CMD_ACCNT_LOGOFF);
+		ui16PackLen = coPSPack.AddAttr (psoReq, sizeof(mcPack), PS_COMMAND, CMD_ACCNT_LOGOFF, ui16ValueLen, 0);
 
 		iRetVal = p_pcoIPConn->Send (mcPack, ui16PackLen);
 		if (iRetVal) {
