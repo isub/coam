@@ -1,9 +1,9 @@
 #include <pthread.h>
 
 #define OTL_ORA11G
-#include "../../../utils/otlv4.h"
-#include "../../../utils/ipconnector/IPConnector.h"
-#include "../../../utils/CoACommon.h"
+#include "utils/otlv4.h"
+#include "utils/ipconnector/ipconnector.h"
+#include "utils/coacommon.h"
 
 extern otl_connect g_coMainDBConn;
 extern char g_mcDebugFooter[256];

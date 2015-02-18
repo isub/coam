@@ -25,10 +25,10 @@
 #include <vector>
 #include <string>
 
-#include "../../../utils/CoACommon.h"
-#include "../../../utils/config/Config.h"
-#include "../../../utils/log/Log.h"
-#include "../Manager/coam.h"
+#include "utils/coacommon.h"
+#include "utils/config/config.h"
+#include "utils/log/log.h"
+#include "../manager/coam.h"
 #include "main.h"
 
 static void sig_handler(int sig);

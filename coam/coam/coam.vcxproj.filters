@@ -15,24 +15,24 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\Deamon\main.cpp">
+    <ClCompile Include="..\..\src\deamon\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\Manager\CoAManager.cpp">
+    <ClCompile Include="..\..\src\manager\coam.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\Manager\DBOperation.cpp">
+    <ClCompile Include="..\..\src\manager\dboperation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\Manager\ThreadOperation.cpp">
+    <ClCompile Include="..\..\src\manager\threadoperation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\Deamon\main.h">
+    <ClInclude Include="..\..\src\deamon\main.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Manager\CoAManager.h">
+    <ClInclude Include="..\..\src\manager\coam.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

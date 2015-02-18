@@ -1,5 +1,5 @@
-#include "../../../utils/config/Config.h"
-#include "../../../utils/log/Log.h"
+#include "utils/config/config.h"
+#include "utils/log/log.h"
 
 #include "coam.h"
 

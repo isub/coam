@@ -18,11 +18,11 @@
 #	define	stricmp	strcasecmp
 #endif
 
-#include "../../../utils/CoACommon.h"
-#include "../../../utils/config/Config.h"
-#include "../../../utils/log/Log.h"
-#include "../../../utils/pspacket/PSPacket.h"
-#include "../../../utils/timemeasurer/TimeMeasurer.h"
+#include "utils/coacommon.h"
+#include "utils/config/config.h"
+#include "utils/log/log.h"
+#include "utils/pspacket/pspacket.h"
+#include "utils/timemeasurer/timemeasurer.h"
 #include "coam.h"
 
 /* глобальные переменные */
