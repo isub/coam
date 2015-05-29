@@ -22,7 +22,6 @@
 #include "utils/config/config.h"
 #include "utils/log/log.h"
 #include "utils/pspacket/pspacket.h"
-#include "utils/timemeasurer/timemeasurer.h"
 #include "coam.h"
 
 /* глобальные переменные */
@@ -38,8 +37,6 @@ int LoadConf (const char *p_pszConfDir) {
 	int iRetVal = 0;
 	std::string strConfDir;
 	std::string strConfFile;
-
-	ENTER_ROUT;
 
 	do {
 		strConfDir = p_pszConfDir;
@@ -65,54 +62,40 @@ int LoadConf (const char *p_pszConfDir) {
 		if (iRetVal) { break; }
 	} while (0);
 
-	LEAVE_ROUT (iRetVal);
-
 	return iRetVal;
 }
 
 int InitCoAManager () {
 	int iRetVal = 0;
-	CTimeMeasurer coTM;
 	char mcTimeDiff[32];
-
-	ENTER_ROUT;
 
 	do {
 		std::vector<std::string> vectConfParam;
-		std::vector<std::string>::iterator iterConfParam;
+		std::string strConfParam;
 
-		iRetVal = g_coConf.GetParamValue ("log_file_mask", vectConfParam);
+		iRetVal = g_coConf.GetParamValue ("log_file_mask", strConfParam);
 		if (iRetVal) {
-			g_coLog.WriteLog ("InitCoAManager: error: Log file mask not defined");
+			LOG_F(g_coLog, "Log file mask not defined");
 			break;
 		}
-		iterConfParam = vectConfParam.begin();
 		/* инициализация логгера */
-		iRetVal = g_coLog.Init (iterConfParam->c_str());
+		iRetVal = g_coLog.Init (strConfParam.c_str());
 		if (iRetVal) {
-			g_coLog.WriteLog ("InitCoAManager: error: Can not initialize log writer: code: '%d'", iRetVal);
+			LOG_F(g_coLog, "can not initialize log writer: code: '%d'", iRetVal);
 			break;
 		}
 		/* изменение пользователя и группы владельца демона */
 		ChangeOSUser ();
-		/* подключение к БД */
-		coTM.Set ();
-		iRetVal = ConnectDB (g_coMainDBConn);
+		/* инициализация пула подклчений к БД */
+		iRetVal = db_pool_init(&g_coLog, &g_coConf);
 		if (iRetVal) {
-			g_coLog.WriteLog ("InitCoAManager: error: ConnectDB: code: '%d'", iRetVal);
-			break;
+			LOG_F(g_coLog, "can not initialize DB pool");
 		}
-		coTM.GetDifference (NULL, mcTimeDiff, sizeof(mcTimeDiff));
-		g_coLog.WriteLog ("InitCoAManager: info: DB connected successfully in '%s'", mcTimeDiff);
 		/* создание списка NASов */
-		coTM.Set ();
 		iRetVal = CreateNASList (&g_mapNASList);
 		if (iRetVal) {
-			g_coLog.WriteLog ("InitCoAManager: error: CreateNASList: code: '%d'", iRetVal);
 			break;
 		}
-		coTM.GetDifference (NULL, mcTimeDiff, sizeof(mcTimeDiff));
-		g_coLog.WriteLog ("InitCoAManager: info: NAS list created successfully in '%s'", mcTimeDiff);
 		/* инициализация пула потоков */
 		iRetVal = InitThreadPool ();
 		if (iRetVal) {
@@ -120,19 +103,13 @@ int InitCoAManager () {
 		}
 	} while (0);
 
-	LEAVE_ROUT (iRetVal);
-
 	return iRetVal;
 }
 
 int DeInitCoAManager () {
 	int iRetVal = 0;
 
-	ENTER_ROUT;
-
-	DisconnectDB (g_coMainDBConn);
-
-	LEAVE_ROUT (iRetVal);
+	db_pool_deinit();
 
 	return iRetVal;
 }
@@ -148,8 +125,6 @@ void ChangeOSUser () {
 	group *psoGroup;
 	gid_t idUser, idGroup;
 	std::string strVal;
-
-	ENTER_ROUT;
 
 	// изменяем id пользователя ОС
 	iFnRes = g_coConf.GetParamValue ("os_user", strVal);
@@ -181,20 +156,16 @@ void ChangeOSUser () {
 	if ((gid_t)-1 != idGroup) {
 		setgid (idGroup);
 	}
-
-	LEAVE_ROUT (0);
 }
 
 int ConnectCoASensor (CIPConnector &p_coIPConn) {
 	int iRetVal = 0;
 	std::vector<std::string> vectValList;
 	const char *pcszConfParam;	// значение параметра из конфигурации
-	const char *pcszHostName;		// имя удаленного хоста
-	uint16_t ui16Port;					// порт удаленного хоста
-	int iProtoType;							// тип протокола взаимодействия с удаленным хостом
+	const char *pcszHostName;	// имя удаленного хоста
+	uint16_t ui16Port;			// порт удаленного хоста
+	int iProtoType;				// тип протокола взаимодействия с удаленным хостом
 	int iFnRes;
-
-	ENTER_ROUT;
 
 	do {
 		// выбираем сведения о сетевом протоколе
@@ -202,21 +173,19 @@ int ConnectCoASensor (CIPConnector &p_coIPConn) {
 		iRetVal = g_coConf.GetParamValue (pcszConfParam, vectValList);
 		if (iRetVal) {
 			iRetVal = -1;
-			g_coLog.WriteLog(
-				"ConnectCoASensor: configuration parameter '%s' not found",
+			LOG_F(g_coLog, "configuration parameter '%s' not found",
 				pcszConfParam);
 			break;
 		}
 		if (0 == stricmp ("TCP", vectValList[0].c_str())) {
 			iProtoType = IPPROTO_TCP;
-		}
-		else if (0 == stricmp ("UDP", vectValList[0].c_str())) {
+		} else if (0 == stricmp ("UDP", vectValList[0].c_str())) {
 			iProtoType = IPPROTO_UDP;
-		}
-		else {
+		} else {
 			iRetVal = -1;
-			g_coLog.WriteLog(
-				"ConnectCoASensor: configuration parameter '%s' containts unsuppurted value '%s'",
+			LOG_F(
+				g_coLog,
+				"configuration parameter '%s' containts unsuppurted value '%s'",
 				pcszConfParam,
 				vectValList[0].c_str());
 			break;
@@ -226,8 +195,9 @@ int ConnectCoASensor (CIPConnector &p_coIPConn) {
 		pcszConfParam = "coa_sensor_addr";
 		iRetVal = g_coConf.GetParamValue (pcszConfParam, vectValList);
 		if (iRetVal) {
-			g_coLog.WriteLog(
-				"ConnectCoASensor: configuration parameter '%s' not found",
+			LOG_F(
+				g_coLog,
+				"configuration parameter '%s' not found",
 				pcszConfParam);
 			break;
 		}
@@ -237,8 +207,9 @@ int ConnectCoASensor (CIPConnector &p_coIPConn) {
 		pcszConfParam = "coa_sensor_port";
 		iRetVal = g_coConf.GetParamValue (pcszConfParam, vectValList);
 		if (iRetVal) {
-			g_coLog.WriteLog(
-				"ConnectCoASensor: configuration parameter '%s' not found",
+			LOG_F(
+				g_coLog,
+				"configuration parameter '%s' not found",
 				pcszConfParam);
 			break;
 		}
@@ -248,12 +219,12 @@ int ConnectCoASensor (CIPConnector &p_coIPConn) {
 		iFnRes = p_coIPConn.Connect (pcszHostName, ui16Port, iProtoType);
 		if (iFnRes) {
 			iRetVal = -1;
-			g_coLog.WriteLog ("ConnectCoASensor: can't connect to CoASensor");
+			LOG_F(
+				g_coLog,
+				"can't connect to CoASensor");
 			break;
 		}
 	} while (0);
-
-	LEAVE_ROUT (iRetVal);
 
 	return iRetVal;
 }
@@ -266,20 +237,25 @@ int RequestTimer () {
 	return iRetVal;
 }
 
+std::multimap<std::string, SSessionInfoFull> g_mmapSessionListFull;
+
 int MainWork ()
 {
 	int iRetVal = 0;
 	std::vector<SSubscriberRefresh> vectSubscriberList;
 	std::vector<SSubscriberRefresh>::iterator iterSubscr;
 
-	ENTER_ROUT;
-
 	do {
 		/* загружаем список абонентов */
 		iRetVal = CreateSubscriberList (&vectSubscriberList);
 		if (iRetVal) {
-			g_coLog.WriteLog ("CreateSubscriberList failed");
 			break;
+		}
+		if (vectSubscriberList.size() > 1000) {
+			iRetVal = CreateSessionListFull(g_mmapSessionListFull);
+			if (iRetVal) {
+				g_mmapSessionListFull.clear();
+			}
 		}
 		/* обходим список абонентов */
 		iterSubscr = vectSubscriberList.begin();
@@ -293,7 +269,7 @@ int MainWork ()
 		}
 	} while (0);
 
-	LEAVE_ROUT (iRetVal);
+	g_mmapSessionListFull.clear();
 
 	return iRetVal;
 }
@@ -302,7 +278,7 @@ bool operator < (const SSessionInfo &soLeft, const SSessionInfo &soRight) {
 	bool bRetVal;
 	int iFnRes;
 
-	iFnRes = strcmp (soLeft.m_mcUserName, soRight.m_mcUserName);
+	iFnRes = soLeft.m_strUserName == soRight.m_strUserName;
 	if (0 > iFnRes) {
 		return true;
 	}
@@ -310,7 +286,7 @@ bool operator < (const SSessionInfo &soLeft, const SSessionInfo &soRight) {
 		return false;
 	}
 
-	iFnRes = strcmp (soLeft.m_mcNasIPAddress, soRight.m_mcNasIPAddress);
+	iFnRes = soLeft.m_strNASIPAddress == soRight.m_strNASIPAddress;
 	if (0 > iFnRes) {
 		return true;
 	}
@@ -318,7 +294,7 @@ bool operator < (const SSessionInfo &soLeft, const SSessionInfo &soRight) {
 		return false;
 	}
 
-	iFnRes = strcmp (soLeft.m_mcCiscoParentSessionId, soRight.m_mcCiscoParentSessionId);
+	iFnRes = soLeft.m_strSessionId == soRight.m_strSessionId;
 	if (0 > iFnRes) {
 		return true;
 	}
@@ -326,7 +302,7 @@ bool operator < (const SSessionInfo &soLeft, const SSessionInfo &soRight) {
 		return false;
 	}
 
-	iFnRes = strcmp (soLeft.m_mcLocation, soRight.m_mcLocation);
+	iFnRes = soLeft.m_strLocation == soRight.m_strLocation;
 	if (0 > iFnRes) {
 		return true;
 	}
@@ -338,7 +314,7 @@ bool operator < (const SPolicyInfo &soLeft, const SPolicyInfo &soRight) {
 	bool bRetVal;
 	int iFnRes;
 
-	iFnRes = strcmp (soLeft.m_mcUserName, soRight.m_mcUserName);
+	iFnRes = soLeft.m_strUserName.compare(soRight.m_strUserName);
 	if (0 > iFnRes) {
 		return true;
 	}
@@ -346,7 +322,7 @@ bool operator < (const SPolicyInfo &soLeft, const SPolicyInfo &soRight) {
 		return false;
 	}
 
-	iFnRes = strcmp (soLeft.m_mcLocation, soRight.m_mcLocation);
+	iFnRes = soLeft.m_strLocation.compare(soRight.m_strLocation);
 	if (0 > iFnRes) {
 		return true;
 	}
@@ -358,7 +334,7 @@ bool operator < (const SPolicyDetail &soLeft, const SPolicyDetail &soRight) {
 	bool bRetVal;
 	int iFnRes;
 
-	iFnRes = strcmp (soLeft.m_mcAttr, soRight.m_mcAttr);
+	iFnRes = soLeft.m_strAttr.compare(soRight.m_strAttr);
 	if (0 > iFnRes) {
 		return true;
 	}
@@ -366,7 +342,7 @@ bool operator < (const SPolicyDetail &soLeft, const SPolicyDetail &soRight) {
 		return false;
 	}
 
-	iFnRes = strcmp (soLeft.m_mcValue, soRight.m_mcValue);
+	iFnRes = soLeft.m_strValue.compare(soRight.m_strValue);
 	if (0 > iFnRes) {
 		return true;
 	}
@@ -374,7 +350,10 @@ bool operator < (const SPolicyDetail &soLeft, const SPolicyDetail &soRight) {
 	return false;
 }
 
-int OperateSubscriber (const SSubscriberRefresh &p_soRefreshRecord, CIPConnector *p_pcoIPConn, otl_connect &p_coDBConn)
+int OperateSubscriber (
+	const SSubscriberRefresh &p_soRefreshRecord,
+	CIPConnector *p_pcoIPConn,
+	otl_connect &p_coDBConn)
 {
 	int iRetVal = 0;
 	CTimeMeasurer coTM;
@@ -383,16 +362,13 @@ int OperateSubscriber (const SSubscriberRefresh &p_soRefreshRecord, CIPConnector
 	int stPolicyCnt;
 	bool bPolicyFound;
 
-	ENTER_ROUT;
-
-	g_coLog.WriteLog ("OperateSubscriber: Subscriber_id: '%s';", p_soRefreshRecord.m_mcSubscriberId);
+	LOG_N(g_coLog, "subscriber_id: '%s';", p_soRefreshRecord.m_mcSubscriberId);
 
 	do {
 		/* загружаем список сессий подписчика */
 		iRetVal = CreateSessionList (p_soRefreshRecord.m_mcSubscriberId, &mapSessionList, p_coDBConn);
 		if (iRetVal) {
 			/* если не удалось загрузить список сессий подписчика */
-			g_coLog.WriteLog ("OperateSubscriber: error: CreateSessionList: code: '%d'", iRetVal);
 			break;
 		}
 
@@ -412,9 +388,7 @@ int OperateSubscriber (const SSubscriberRefresh &p_soRefreshRecord, CIPConnector
 
 	char mcTimeDiff[32];
 	coTM.GetDifference (NULL, mcTimeDiff, sizeof(mcTimeDiff));
-	g_coLog.WriteLog ("OperateSubscriber: Subscriber_id: '%s' operated in '%s'", p_soRefreshRecord.m_mcSubscriberId, mcTimeDiff);
-	
-	LEAVE_ROUT (iRetVal);
+	LOG_N(g_coLog, "subscriber_id: '%s' operated in '%s'", p_soRefreshRecord.m_mcSubscriberId, mcTimeDiff);
 
 	return iRetVal;
 }
@@ -429,28 +403,27 @@ int OperateSubscriberSession (
 {
 	int iRetVal = 0;
 
-	ENTER_ROUT;
-
 	do {
 		SPolicyInfo soPolicyInfo;
 		std::map<SPolicyInfo,std::map<SPolicyDetail,int> >::iterator iterProfilePolicy = p_mapProfilePolicyList.end ();
 		std::map<SPolicyInfo,std::map<SPolicyDetail,int> >::iterator iterProfilePolicyDef = p_mapProfilePolicyList.end ();
 
-		g_coLog.WriteLog(
-			"OperateSubscriberSession: Subscriber_id: '%s'; UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s'; Location: '%s';",
+		LOG_N(
+			g_coLog,
+			"Subscriber_id: '%s'; UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s'; Location: '%s';",
 			p_soRefreshRecord.m_mcSubscriberId,
-			p_soSessionInfo.m_mcUserName,
-			p_soSessionInfo.m_mcNasIPAddress,
-			p_soSessionInfo.m_mcCiscoParentSessionId,
-			p_soSessionInfo.m_mcLocation);
+			p_soSessionInfo.m_strUserName.c_str(),
+			p_soSessionInfo.m_strNASIPAddress.c_str(),
+			p_soSessionInfo.m_strSessionId.c_str(),
+			p_soSessionInfo.m_strLocation.c_str());
 		/* ищем кешированные политики */
-		strcpy (soPolicyInfo.m_mcUserName, p_soSessionInfo.m_mcUserName);
+		soPolicyInfo.m_strUserName = p_soSessionInfo.m_strUserName;
 		// ищем кешированную политику для локации сервера доступа
-		strcpy (soPolicyInfo.m_mcLocation, p_soSessionInfo.m_mcLocation);
+		soPolicyInfo.m_strLocation = p_soSessionInfo.m_strLocation;
 		iterProfilePolicy = p_mapProfilePolicyList.find (soPolicyInfo);
 		// ищем кешированную политику для локации DEFAULT
-		if (strcmp (p_soSessionInfo.m_mcLocation, "DEFAULT")) {
-			strcpy (soPolicyInfo.m_mcLocation, "DEFAULT");
+		if (p_soSessionInfo.m_strLocation.compare("DEFAULT")) {
+			soPolicyInfo.m_strLocation = "DEFAULT";
 			iterProfilePolicyDef = p_mapProfilePolicyList.find (soPolicyInfo);
 		}
 		/* если кешированные политики не найдены запрашиваем их из БД */
@@ -458,18 +431,19 @@ int OperateSubscriberSession (
 			iRetVal = CreatePolicyList (&(p_soSessionInfo), &p_mapProfilePolicyList, p_coDBConn);
 			/* если произошла ошибка при формировании списка политик завершаем работу */
 			if (iRetVal) {
-				g_coLog.WriteLog (
-					"OperateSubscriberSession: Subscriber_id: '%s': error: CreatePolicyList: code: '%d'",
+				LOG_E(
+					g_coLog,
+					"Subscriber_id: '%s': CreatePolicyList: error code: '%d'",
 					p_soRefreshRecord.m_mcSubscriberId,
 					iRetVal);
 				break;
 			}
 			/* повторно ищем кешированную политику для локации сервера доступа */
-			strcpy (soPolicyInfo.m_mcLocation, p_soSessionInfo.m_mcLocation);
+			soPolicyInfo.m_strLocation = p_soSessionInfo.m_strLocation;
 			iterProfilePolicy = p_mapProfilePolicyList.find (soPolicyInfo);
 			/* повторно ищем кешированную политику для локации DEFAULT */
-			if (strcmp (p_soSessionInfo.m_mcLocation, "DEFAULT")) {
-				strcpy (soPolicyInfo.m_mcLocation, "DEFAULT");
+			if (p_soSessionInfo.m_strLocation.compare("DEFAULT")) {
+				soPolicyInfo.m_strLocation = "DEFAULT";
 				iterProfilePolicyDef = p_mapProfilePolicyList.find (soPolicyInfo);
 			}
 		}
@@ -479,59 +453,21 @@ int OperateSubscriberSession (
 			if (0 == strcmp ("logoff", p_soRefreshRecord.m_mcAction)) {
 				iRetVal = AccountLogoff (&(p_soSessionInfo), &p_coIPConn);
 				if (iRetVal) {
-					if (-45 == iRetVal) {
-						iRetVal = 0;
-					} else {
-						g_coLog.WriteLog (
-							"OperateSubscriberSession: Subscriber_id: '%s'; UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s': error occurred while 'AccountLogoff' processing",
-							p_soRefreshRecord.m_mcSubscriberId,
-							p_soSessionInfo.m_mcUserName,
-							p_soSessionInfo.m_mcNasIPAddress,
-							p_soSessionInfo.m_mcCiscoParentSessionId);
-						break;
-					}
+					break;
 				}
-				g_coLog.WriteLog ("OperateSubscriberSession: Subscriber_id: '%s'; UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s'; action: '%s'; User is Disconnected",
-					p_soRefreshRecord.m_mcSubscriberId,
-					p_soSessionInfo.m_mcUserName,
-					p_soSessionInfo.m_mcNasIPAddress,
-					p_soSessionInfo.m_mcCiscoParentSessionId,
-					p_soRefreshRecord.m_mcAction);
 			}
 			/* отрабатываем команду 'checksession' */
-			else if (0 == strcmp ("checksession", p_soRefreshRecord.m_mcAction)) {
-				iRetVal = CheckSession (&(p_soSessionInfo), &p_coIPConn, p_coDBConn);
-				switch (iRetVal) {
-				case -45:
-					iRetVal = 0;
-					g_coLog.WriteLog ("OperateSubscriberSession: Subscriber_id: '%s'; UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s'; action: '%s'; user session fixed",
-						p_soRefreshRecord.m_mcSubscriberId,
-						p_soSessionInfo.m_mcUserName,
-						p_soSessionInfo.m_mcNasIPAddress,
-						p_soSessionInfo.m_mcCiscoParentSessionId,
-						p_soRefreshRecord.m_mcAction);
-					break;
-				case 0:
-					g_coLog.WriteLog ("OperateSubscriberSession: Subscriber_id: '%s'; UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s'; action: '%s'; user session is active - nothing to do",
-						p_soRefreshRecord.m_mcSubscriberId,
-						p_soSessionInfo.m_mcUserName,
-						p_soSessionInfo.m_mcNasIPAddress,
-						p_soSessionInfo.m_mcCiscoParentSessionId,
-						p_soRefreshRecord.m_mcAction);
-					break;
-				default:
-					g_coLog.WriteLog (
-						"OperateSubscriberSession: Subscriber_id: '%s'; UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s': error occurred while 'CheckSession' processing",
-						p_soRefreshRecord.m_mcSubscriberId,
-						p_soSessionInfo.m_mcUserName,
-						p_soSessionInfo.m_mcNasIPAddress,
-						p_soSessionInfo.m_mcCiscoParentSessionId);
+			else if (0 == strcmp("checksession", p_soRefreshRecord.m_mcAction)) {
+				iRetVal = CheckSession(&(p_soSessionInfo), &p_coIPConn, p_coDBConn);
+				if (iRetVal) {
 					break;
 				}
 			}
 			/* неизвестное значение 'action' */
 			else {
-				g_coLog.WriteLog ("OperateSubscriberSession: Subscriber_id: '%s': error: action: '%s' is not supported",
+				LOG_E(
+					g_coLog,
+					"Subscriber_id: '%s': error: action: '%s' is not supported",
 					p_soRefreshRecord.m_mcSubscriberId,
 					p_soRefreshRecord.m_mcAction);
 				iRetVal = -1;
@@ -542,23 +478,8 @@ int OperateSubscriberSession (
 			// политики не найдены, посылаем LogOff
 			iRetVal = AccountLogoff (&(p_soSessionInfo), &p_coIPConn);
 			if (iRetVal) {
-				if (-45 == iRetVal) {
-					iRetVal = 0;
-				} else {
-					g_coLog.WriteLog (
-						"OperateSubscriberSession: Subscriber_id: '%s'; UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s': error occurred while 'AccountLogoff' processing",
-							p_soRefreshRecord.m_mcSubscriberId,
-							p_soSessionInfo.m_mcUserName,
-							p_soSessionInfo.m_mcNasIPAddress,
-							p_soSessionInfo.m_mcCiscoParentSessionId);
-					break;
-				}
+				break;
 			}
-			g_coLog.WriteLog ("OperateSubscriberSession: Subscriber_id: '%s'; UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s'; Actual policies not found. User is Disconnected",
-				p_soRefreshRecord.m_mcSubscriberId,
-				p_soSessionInfo.m_mcUserName,
-				p_soSessionInfo.m_mcNasIPAddress,
-				p_soSessionInfo.m_mcCiscoParentSessionId);
 		}
 		/* обрабатываем политики */
 		else {
@@ -592,52 +513,31 @@ int OperateSubscriberSession (
 		}
 	} while (0);
 
-	LEAVE_ROUT (iRetVal);
-
 	return iRetVal;
 }
 
-int DeactivateNotrelevantPolicy (const SSubscriberRefresh &p_soRefreshRecord, const SSessionInfo &p_soSessionInfo, std::map<std::string,int> &p_soSessionPolicyList, CIPConnector &p_coIPConn)
+int DeactivateNotrelevantPolicy (
+	const SSubscriberRefresh &p_soRefreshRecord,
+	const SSessionInfo &p_soSessionInfo,
+	std::map<std::string,int> &p_soSessionPolicyList,
+	CIPConnector &p_coIPConn)
 {
 	int iRetVal = 0;
-
-	ENTER_ROUT;
 
 	do {
 		std::map<std::string,int>::iterator iterSessionPolicy;
 		iterSessionPolicy = p_soSessionPolicyList.begin ();
 		const char *mcstrSessState[] = {"not actual", "actual"};
 		while (iterSessionPolicy != p_soSessionPolicyList.end ()) {
-			if (2 <= g_soMainCfg.m_iDebug) {
-				g_coLog.WriteLog ("%sService: '%s'; State: '%s'", FOOT(g_soMainCfg.m_iDCD), iterSessionPolicy->first.c_str(), mcstrSessState[iterSessionPolicy->second]);
-			}
 			if (0 == iterSessionPolicy->second) {
 				iRetVal = DeActivateService (&p_soSessionInfo, iterSessionPolicy->first.c_str(), NULL, &p_coIPConn);
 				if (iRetVal) {
-					if (-45 == iRetVal) {
-						iRetVal = 0;
-					} else {
-						g_coLog.WriteLog (
-							"DeactivateNotrelevantPolicy: Subscriber_id: '%s'; UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s': error occurred while 'DeActivateService' processing",
-								p_soRefreshRecord.m_mcSubscriberId,
-								p_soSessionInfo.m_mcUserName,
-								p_soSessionInfo.m_mcNasIPAddress,
-								p_soSessionInfo.m_mcCiscoParentSessionId);
-						break;
-					}
+					break;
 				}
-				g_coLog.WriteLog ("DeactivateNotrelevantPolicy: Subscriber_id: '%s'; UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s'; Policy '%s' deactivated",
-					p_soRefreshRecord.m_mcSubscriberId,
-					p_soSessionInfo.m_mcUserName,
-					p_soSessionInfo.m_mcNasIPAddress,
-					p_soSessionInfo.m_mcCiscoParentSessionId,
-					iterSessionPolicy->first.c_str());
 			}
 			++iterSessionPolicy;
 		}
 	} while (0);
-
-	LEAVE_ROUT (iRetVal);
 
 	return iRetVal;
 }
@@ -650,79 +550,45 @@ int ActivateInactivePolicy (
 {
 	int iRetVal = 0;
 
-	ENTER_ROUT;
-
 	do {
 		const char *mcstrPolicyState[] = {"inactive", "active"};
 		std::map<SPolicyDetail,int>::iterator iterProfilePolicyDetail;
 		iterProfilePolicyDetail = p_mapPolicyDetail.begin();
 		while (iterProfilePolicyDetail != p_mapPolicyDetail.end()) {
-			if (2 <= g_soMainCfg.m_iDebug) {
-				g_coLog.WriteLog ("%sPolicy: '%s'; State: '%s'", FOOT(g_soMainCfg.m_iDCD), iterProfilePolicyDetail->first.m_mcValue, mcstrPolicyState[iterProfilePolicyDetail->second]);
-			}
 			if (0 == iterProfilePolicyDetail->second) {
-				iRetVal = ActivateService (&p_soSessionInfo, iterProfilePolicyDetail->first.m_mcValue, iterProfilePolicyDetail->first.m_mcAttr, &p_coIPConn);
+				iRetVal = ActivateService (&p_soSessionInfo, iterProfilePolicyDetail->first.m_strValue.c_str(), iterProfilePolicyDetail->first.m_strAttr.c_str(), &p_coIPConn);
 				if (iRetVal) {
-					if (-45 == iRetVal) {
-						iRetVal = 0;
-					} else {
-						g_coLog.WriteLog (
-							"ActivateInactivePolicy: Subscriber_id: '%s'; UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s'; Policy '%s': error occurred while 'ActivateService' processing",
-							p_soRefreshRecord.m_mcSubscriberId,
-							p_soSessionInfo.m_mcUserName,
-							p_soSessionInfo.m_mcNasIPAddress,
-							p_soSessionInfo.m_mcCiscoParentSessionId,
-							iterProfilePolicyDetail->first.m_mcValue);
-						break;
-					}
+					break;
 				}
-				g_coLog.WriteLog ("ActivateInactivePolicy: Subscriber_id: '%s'; UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s'; Policy '%s' activated",
-					p_soRefreshRecord.m_mcSubscriberId,
-					p_soSessionInfo.m_mcUserName,
-					p_soSessionInfo.m_mcNasIPAddress,
-					p_soSessionInfo.m_mcCiscoParentSessionId,
-					iterProfilePolicyDetail->first.m_mcValue);
 			}
 			++iterProfilePolicyDetail;
 		}
 	} while (0);
 
-	LEAVE_ROUT (iRetVal);
-
 	return iRetVal;
 }
 
-int GetNASLocation (char *p_pszNASName, char *p_pszLocation, int p_iBufSize)
+int GetNASLocation (std::string &p_strNASIPAddress, std::string &p_strLocation)
 {
 	int iRetVal = 0;
 	std::map<std::string,std::string>::iterator iterNASList;
 	size_t stCount;
 
-	ENTER_ROUT;
-
-	iterNASList = g_mapNASList.find (p_pszNASName);
+	iterNASList = g_mapNASList.find (p_strNASIPAddress);
 	if (iterNASList != g_mapNASList.end()) {
-		stCount = iterNASList->second.length() > p_iBufSize ? p_iBufSize : iterNASList->second.length() + 1;
-		strncpy(
-			p_pszLocation,
-			iterNASList->second.c_str(),
-			stCount);
-		if (2 <= g_soMainCfg.m_iDebug) {
-			g_coLog.WriteLog ("%sNASName: '%s'; Location: '%s'", FOOT(g_soMainCfg.m_iDCD), p_pszNASName, p_pszLocation);
-		}
+		p_strLocation = iterNASList->second;
 	} else {
-		if (1 <= g_soMainCfg.m_iDebug) {
-			g_coLog.WriteLog ("%sLocation for '%s' not found", FOOT(g_soMainCfg.m_iDCD), p_pszNASName);
-		}
 		iRetVal = -1;
+		LOG_E(g_coLog, "NAS '%s' not found", p_strNASIPAddress.c_str());
 	}
-
-	LEAVE_ROUT (iRetVal);
 
 	return iRetVal;
 }
 
-int ModifyName (const char *p_pszModifyRule, char *p_pszLocation, char *p_pszValue)
+int ModifyName(
+	const char *p_pszModifyRule,
+	std::string &p_strLocation,
+	std::string &p_strValue)
 {
 	int iRetVal = 0;
 	char mcLocation[128];
@@ -732,36 +598,29 @@ int ModifyName (const char *p_pszModifyRule, char *p_pszLocation, char *p_pszVal
 	CConfig *pcoLocConf;
 	std::string strModifyName;
 
-	ENTER_ROUT;
-
-	if (2 <= g_soMainCfg.m_iDebug) {
-		g_coLog.WriteLog ("%sOriginal name: '%s'; Location: '%s'", FOOT(g_soMainCfg.m_iDCD), p_pszValue, p_pszLocation);
-	}
-
 	do {
-		strModifyName = p_pszValue;
-		iterLocation = g_mapLocationConf.find (p_pszLocation);
+		strModifyName = p_strValue;
+		iterLocation = g_mapLocationConf.find (p_strLocation);
 		if (iterLocation == g_mapLocationConf.end()) {
-			g_coLog.WriteLog ("ModifyName: Location '%s' configuration not found", p_pszLocation);
+			LOG_E(g_coLog, "Location '%s' configuration not found", p_strLocation.c_str());
 			iRetVal = -1;
 			break;
 		}
 		pcoLocConf = iterLocation->second;
 		if (NULL == pcoLocConf) {
-			g_coLog.WriteLog ("ModifyName: Location '%s' configuration not exists", p_pszLocation);
-			iRetVal = -1;
+			LOG_E(g_coLog, "location '%s' configuration not exists", p_strLocation.c_str());
+			iRetVal = -2;
 			break;
 		}
 		// выбираем первое правило
 		iRetVal = pcoLocConf->GetParamValue (p_pszModifyRule, vectValList);
-		if (iRetVal) { break; }
+		if (iRetVal) {
+			break;
+		}
 		iterValList = vectValList.begin();
 		// обходим все правила изменения имен сервисов
 		while (iterValList != vectValList.end()) {
 			// если длина префикса меньше или равна имени сервиса
-			if (2 <= g_soMainCfg.m_iDebug) {
-				g_coLog.WriteLog ("%sCheck: '%s'", FOOT(g_soMainCfg.m_iDCD), iterValList->c_str());
-			}
 			if (iterValList->length() <= strModifyName.length()) {
 				int iFnRes;
 				// сравниваем префикс с началом имени сервиса
@@ -771,17 +630,11 @@ int ModifyName (const char *p_pszModifyRule, char *p_pszLocation, char *p_pszVal
 					iterValList->length());
 				// если перфикс и начало имени сервиса совпадают
 				if (0 == iFnRes) {
-					if (2 <= g_soMainCfg.m_iDebug) {
-						g_coLog.WriteLog ("%s'%s' applying", FOOT(g_soMainCfg.m_iDCD), iterValList->c_str());
-					}
 					int iPrfLen = iterValList->length();
 					std::basic_string<char> bstrTmp;
 					// убираем префикс
 					bstrTmp = strModifyName.substr (iPrfLen, strModifyName.length() - iPrfLen);
-					if (2 <= g_soMainCfg.m_iDebug) {
-						g_coLog.WriteLog ("%sService: '%s'; Substring: '%s'", FOOT(g_soMainCfg.m_iDCD), strModifyName.c_str(), bstrTmp.c_str());
-					}
-					strcpy (p_pszValue, bstrTmp.c_str());
+					p_strValue = bstrTmp;
 					// завершаем поиск правила для имени сервиса
 					break;
 				}
@@ -790,79 +643,53 @@ int ModifyName (const char *p_pszModifyRule, char *p_pszLocation, char *p_pszVal
 		}
 	} while (0);
 
-	if (2 <= g_soMainCfg.m_iDebug) {
-		g_coLog.WriteLog ("%sModified name: '%s'", FOOT(g_soMainCfg.m_iDCD), p_pszValue);
-	}
-
-	LEAVE_ROUT (iRetVal);
-
 	return iRetVal;
 }
 
-bool Filter (const char *p_pszFilterName, char *p_pszLocation, char *p_pszValue)
+bool Filter(const char *p_pszFilterName, std::string &p_strLocation, std::string &p_strValue)
 {
 	bool bRetVal = false;
+	int iFnRes;
 	char mcLocation[128];
 	std::map<std::string,CConfig*>::iterator iterLocation;
 	std::vector<std::string> vectValList;
 	std::vector<std::string>::iterator iterValList;
 	CConfig *pcoLocConf;
-	int iValueLen = strlen (p_pszValue);
-
-	ENTER_ROUT;
-
-	if (2 <= g_soMainCfg.m_iDebug) {
-		g_coLog.WriteLog ("%sValue: '%s'; Location: '%s'", FOOT(g_soMainCfg.m_iDCD), p_pszValue, p_pszLocation);
-	}
+	int iValueLen = p_strValue.length();
 
 	do {
 		// ищем конфигурацию локации
-		iterLocation = g_mapLocationConf.find (p_pszLocation);
+		iterLocation = g_mapLocationConf.find (p_strLocation);
 		if (iterLocation == g_mapLocationConf.end()) {
-			g_coLog.WriteLog ("Filter: Location '%s' configuration not found", p_pszLocation);
+			LOG_E(g_coLog, "Location '%s' configuration not found", p_strLocation.c_str());
 			bRetVal = true;
 			break;
 		}
 		pcoLocConf = iterLocation->second;
 		if (NULL == pcoLocConf) {
-			g_coLog.WriteLog ("Filter: Location '%s' configuration not exists", p_pszLocation);
+			LOG_E(g_coLog, "Location '%s' configuration not exists", p_strLocation.c_str());
 			bRetVal = true;
 			break;
 		}
 		/* выбираем фильтры для локации */
 		if (0 != pcoLocConf->GetParamValue (p_pszFilterName, vectValList)) {
-			if (2 <= g_soMainCfg.m_iDebug) {
-				g_coLog.WriteLog ("%sLocation: '%s'; Value: '%s'; Filter name: '%s'. Filter not found.", FOOT(g_soMainCfg.m_iDCD), p_pszLocation, p_pszValue, p_pszFilterName);
-			}
 			bRetVal = true;
 			break;
 		}
 		// обходим все правила изменения имен сервисов
 		for (iterValList = vectValList.begin(); iterValList != vectValList.end(); ++iterValList) {
-			if (2 <= g_soMainCfg.m_iDebug) {
-				g_coLog.WriteLog ("%sCheck: '%s'", FOOT(g_soMainCfg.m_iDCD), iterValList->c_str());
-			}
 			// если длина значения больше или равна длине значения фильтра
 			if (iValueLen >= iterValList->length()) {
-				int iFnRes;
 				// сравниваем префикс с началом имени сервиса
-				iFnRes = memcmp(
-					iterValList->c_str(),
-					p_pszValue,
-					iterValList->length());
+				iFnRes = iterValList->compare(0, iterValList->length(), p_strValue);
 				// если перфикс и начало имени сервиса совпадают
 				if (0 == iFnRes) {
-					if (2 <= g_soMainCfg.m_iDebug) {
-						g_coLog.WriteLog ("%s'%s' applying", FOOT(g_soMainCfg.m_iDCD), iterValList->c_str());
-					}
 					bRetVal = true;
 					break;
 				}
 			}
 		}
 	} while (0);
-
-	LEAVE_ROUT (bRetVal);
 
 	return bRetVal;
 }
@@ -874,23 +701,12 @@ int SelectActualPolicy (std::map<std::string,int> *p_pmapSessionDetail, std::map
 	std::map<SPolicyDetail,int>::iterator iterProfilePolicy;
 	int iFnRes;
 
-	ENTER_ROUT;
-
 	iterSessionPolicy = p_pmapSessionDetail->begin();
 	while (iterSessionPolicy != p_pmapSessionDetail->end()) {
-		if (2 <= g_soMainCfg.m_iDebug) {
-			g_coLog.WriteLog ("%sService name '%s'", FOOT(g_soMainCfg.m_iDCD), iterSessionPolicy->first.c_str());
-		}
 		iterProfilePolicy = p_pmapPolicyDetail->begin();
 		while (iterProfilePolicy != p_pmapPolicyDetail->end()) {
-			if (2 <= g_soMainCfg.m_iDebug) {
-				g_coLog.WriteLog ("%sCheck '%s'", FOOT(g_soMainCfg.m_iDCD), iterProfilePolicy->first.m_mcValue);
-			}
-			iFnRes = iterSessionPolicy->first.compare (iterProfilePolicy->first.m_mcValue);
+			iFnRes = iterSessionPolicy->first.compare (iterProfilePolicy->first.m_strValue);
 			if (0 == iFnRes) {
-				if (2 <= g_soMainCfg.m_iDebug) {
-					g_coLog.WriteLog ("%s'%s' applied", FOOT(g_soMainCfg.m_iDCD), iterProfilePolicy->first.m_mcValue);
-				}
 				iterSessionPolicy->second = 1;
 				iterProfilePolicy->second = 1;
 				break;
@@ -899,8 +715,6 @@ int SelectActualPolicy (std::map<std::string,int> *p_pmapSessionDetail, std::map
 		}
 		++iterSessionPolicy;
 	}
-
-	LEAVE_ROUT (iRetVal);
 
 	return iRetVal;
 }
@@ -913,14 +727,12 @@ int SetCommonCoASensorAttr (SPSRequest *p_psoRequest, size_t p_stBufSize, const 
 	__uint16_t ui16PackLen;
 	__uint16_t ui16ValueLen;
 
-	ENTER_ROUT;
-
 	do {
 		if (2 != p_pcoIPConn->GetStatus ()) {
 			iFnRes = ConnectCoASensor (*p_pcoIPConn);
 			if (iFnRes) {
 				iRetVal = iFnRes;
-				g_coLog.WriteLog ("SetCommonCoASensorAttr: can not connect to CoASensor");
+				LOG_E(g_coLog, "can not connect to CoASensor");
 				break;
 			}
 		}
@@ -928,12 +740,12 @@ int SetCommonCoASensorAttr (SPSRequest *p_psoRequest, size_t p_stBufSize, const 
 		coPSPack.Init (p_psoRequest, p_stBufSize, g_uiReqNum++, COMMAND_REQ);
 
 		// добавляем атрибут PS_NASIP
-		ui16ValueLen = strlen (p_pcsoSessionInfo->m_mcNasIPAddress);
-		ui16PackLen = coPSPack.AddAttr (p_psoRequest, p_stBufSize, PS_NASIP, p_pcsoSessionInfo->m_mcNasIPAddress, ui16ValueLen, 0);
+		ui16ValueLen = p_pcsoSessionInfo->m_strNASIPAddress.length();
+		ui16PackLen = coPSPack.AddAttr (p_psoRequest, p_stBufSize, PS_NASIP, p_pcsoSessionInfo->m_strNASIPAddress.data(), ui16ValueLen, 0);
 
 		// добавляем атрибут PS_SESSID
-		ui16ValueLen = strlen (p_pcsoSessionInfo->m_mcCiscoParentSessionId);
-		ui16PackLen = coPSPack.AddAttr (p_psoRequest, p_stBufSize, PS_SESSID, p_pcsoSessionInfo->m_mcCiscoParentSessionId, ui16ValueLen, 0);
+		ui16ValueLen = p_pcsoSessionInfo->m_strSessionId.length();
+		ui16PackLen = coPSPack.AddAttr (p_psoRequest, p_stBufSize, PS_SESSID, p_pcsoSessionInfo->m_strSessionId.data(), ui16ValueLen, 0);
 
 		// дополнительные параметры запроса
 		std::vector<std::string> vectParamVal;
@@ -956,8 +768,6 @@ int SetCommonCoASensorAttr (SPSRequest *p_psoRequest, size_t p_stBufSize, const 
 
 	} while (0);
 
-	LEAVE_ROUT (iRetVal);
-
 	return iRetVal;
 }
 
@@ -974,18 +784,16 @@ int DeActivateService (
 	CPSPacket coPSPack;
 	SPSRequest *psoReq;
 
-	ENTER_ROUT;
-
 	do {
 		psoReq = (SPSRequest*)mcPack;
 
 		// ищем конфигурацию локации
 		std::map<std::string,CConfig*>::iterator iterLocConf;
 		CConfig *pcoLocConf;
-		iterLocConf = g_mapLocationConf.find (p_pcsoSessInfo->m_mcLocation);
+		iterLocConf = g_mapLocationConf.find (p_pcsoSessInfo->m_strLocation);
 		// если конфигурация локации не найдена
 		if (iterLocConf == g_mapLocationConf.end()) {
-			g_coLog.WriteLog ("DeActivateService: Location '%s' configuration not found", p_pcsoSessInfo->m_mcLocation);
+			LOG_E(g_coLog, "Location '%s' configuration not found", p_pcsoSessInfo->m_strLocation.c_str());
 			iRetVal = -1;
 			break;
 		}
@@ -993,7 +801,6 @@ int DeActivateService (
 
 		iRetVal = SetCommonCoASensorAttr (psoReq, sizeof (mcPack), p_pcsoSessInfo, pcoLocConf, p_pcoIPConn);
 		if (iRetVal) {
-			g_coLog.WriteLog ("DeActivateService: SetCommonCoASensorAttr: error: code: '%d'", iRetVal);
 			break;
 		}
 
@@ -1008,12 +815,12 @@ int DeActivateService (
 		iRetVal = pcoLocConf->GetParamValue (pcszConfParamName, strCmd);
 		// если параметр не найден
 		if (iRetVal) {
-			g_coLog.WriteLog ("DeActivateService: Config parameter '%s' not found", pcszConfParamName);
+			LOG_E(g_coLog, "config parameter '%s' not found", pcszConfParamName);
 			break;
 		}
 		// или его значение не задано
 		if (0 == strCmd.length()) {
-			g_coLog.WriteLog ("DeActivateService: Config parameter '%s' not defined", pcszConfParamName);
+			LOG_E(g_coLog, "Config parameter '%s' not defined", pcszConfParamName);
 			iRetVal -1;
 			break;
 		}
@@ -1022,7 +829,7 @@ int DeActivateService (
 		iRetVal = pcoLocConf->GetParamValue (pcszConfParamName, strUseAttrName);
 		// если параметр не найден
 		if (iRetVal) {
-			g_coLog.WriteLog ("DeActivateService: Config parameter '%s' not found", pcszConfParamName);
+			LOG_E(g_coLog, "Config parameter '%s' not found", pcszConfParamName);
 			break;
 		}
 		if (0 == strUseAttrName.compare ("yes") && NULL != p_pcszAttr) {
@@ -1030,31 +837,48 @@ int DeActivateService (
 		} else {
 			ui16ValueLen = snprintf (mcCommand, sizeof(mcCommand), "%s=%s", strCmd.c_str(), p_pcszServiceInfo);
 		}
+		if (ui16ValueLen > sizeof(mcCommand) - 1) {
+			LOG_E(g_coLog, "buffer 'mcCommand' too small to store value: needed size is: '%u'", ui16ValueLen);
+			iRetVal = -1;
+			break;
+		}
 		ui16PackLen = coPSPack.AddAttr (psoReq, sizeof(mcPack), PS_COMMAND, mcCommand, ui16ValueLen, 0);
 
 		iRetVal = p_pcoIPConn->Send (mcPack, ui16PackLen);
 		if (iRetVal) {
-			g_coLog.WriteLog ("DeActivateService: error occurred while processing 'p_pcoIPConn->Send'. error code: '%d'", iRetVal);
+			LOG_E(g_coLog, "'p_pcoIPConn->Send': error code: '%d'", iRetVal);
 			break;
-		}
-		if (2 <= g_soMainCfg.m_iDebug) {
-			ParsePSPack ((SPSRequest*)mcPack, ui16PackLen, 0);
 		}
 
 		iRetVal = p_pcoIPConn->Recv (mcPack, sizeof(mcPack));
 		if (0 == iRetVal) {
-			g_coLog.WriteLog ("DeActivateService: connection is closed");
+			LOG_E(g_coLog, "connection is closed");
 			iRetVal = -1;
 			break;
 		}
 		if (0 > iRetVal) {
-			g_coLog.WriteLog ("DeActivateService: error occurred while processing 'p_pcoIPConn->Recv'. error code: '%d'", iRetVal);
+			LOG_E(g_coLog, "'p_pcoIPConn->Recv': error code: '%d'", iRetVal);
 			break;
 		}
 		iRetVal = ParsePSPack ((SPSRequest*)mcPack, iRetVal);
 	} while (0);
 
-	LEAVE_ROUT (iRetVal);
+	switch (iRetVal) {
+	case 0:
+	case -45:
+		LOG_N(
+			g_coLog,
+			"UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s'; Policy '%s' deactivated; result code: '%d'",
+			p_pcsoSessInfo->m_strUserName.c_str(),
+			p_pcsoSessInfo->m_strNASIPAddress.c_str(),
+			p_pcsoSessInfo->m_strSessionId.c_str(),
+			p_pcszServiceInfo,
+			iRetVal);
+		iRetVal = 0;
+		break;
+	default:
+		break;
+	}
 
 	return iRetVal;
 }
@@ -1072,18 +896,16 @@ int ActivateService (
 	CPSPacket coPSPack;
 	SPSRequest *psoReq;
 
-	ENTER_ROUT;
-
 	do {
 		psoReq = (SPSRequest*)mcPack;
 
 		// ищем конфигурацию локации
 		std::map<std::string,CConfig*>::iterator iterLocConf;
 		CConfig *pcoLocConf;
-		iterLocConf = g_mapLocationConf.find (p_pcsoSessInfo->m_mcLocation);
+		iterLocConf = g_mapLocationConf.find (p_pcsoSessInfo->m_strLocation);
 		// если конфигурация локации не найдена
 		if (iterLocConf == g_mapLocationConf.end()) {
-			g_coLog.WriteLog ("ActivateService: Location '%s' configuration not found", p_pcsoSessInfo->m_mcLocation);
+			LOG_E(g_coLog, "Location '%s' configuration not found", p_pcsoSessInfo->m_strLocation.c_str());
 			iRetVal = -1;
 			break;
 		}
@@ -1091,7 +913,6 @@ int ActivateService (
 
 		iRetVal = SetCommonCoASensorAttr (psoReq, sizeof (mcPack), p_pcsoSessInfo, pcoLocConf, p_pcoIPConn);
 		if (iRetVal) {
-			g_coLog.WriteLog ("ActivateService: SetCommonCoASensorAttr: error: code: '%d'", iRetVal);
 			break;
 		}
 
@@ -1106,12 +927,12 @@ int ActivateService (
 		iRetVal = pcoLocConf->GetParamValue (pcszConfParamName, strCmd);
 		// если параметр не найден
 		if (iRetVal) {
-			g_coLog.WriteLog ("ActivateService: Config parameter '%s' not found", pcszConfParamName);
+			LOG_E(g_coLog, "Config parameter '%s' not found", pcszConfParamName);
 			break;
 		}
 		// или его значение не задано
 		if (0 == strCmd.length()) {
-			g_coLog.WriteLog ("ActivateService: Config parameter '%s' not defined", pcszConfParamName);
+			LOG_E(g_coLog, "Config parameter '%s' not defined", pcszConfParamName);
 			iRetVal -1;
 			break;
 		}
@@ -1120,7 +941,7 @@ int ActivateService (
 		iRetVal = pcoLocConf->GetParamValue (pcszConfParamName, strUserAttrName);
 		// если параметр не найден
 		if (iRetVal) {
-			g_coLog.WriteLog ("ActivateService: Config parameter '%s' not found", pcszConfParamName);
+			LOG_E(g_coLog, "Config parameter '%s' not found", pcszConfParamName);
 			break;
 		}
 		if (0 == strUserAttrName.compare ("yes") && NULL != p_pcszAttr) {
@@ -1128,31 +949,48 @@ int ActivateService (
 		} else {
 			ui16ValueLen = snprintf (mcCommand, sizeof(mcCommand), "%s=%s", strCmd.c_str(), p_pcszServiceInfo);
 		}
-		ui16PackLen = coPSPack.AddAttr (psoReq, sizeof(mcPack), PS_COMMAND, mcCommand, ui16ValueLen, 0);
+		if (ui16ValueLen > sizeof(mcCommand) - 1) {
+			LOG_E(g_coLog, "buffer 'mcCommand' too small to store value: needed size is: '%u'", ui16ValueLen);
+			iRetVal = -1;
+			break;
+		}
+		ui16PackLen = coPSPack.AddAttr(psoReq, sizeof(mcPack), PS_COMMAND, mcCommand, ui16ValueLen, 0);
 
 		iRetVal = p_pcoIPConn->Send (mcPack, ui16PackLen);
 		if (iRetVal) {
-			g_coLog.WriteLog ("ActivateService: error occurred while processing 'p_pcoIPConn->Send'. error code: '%d'", iRetVal);
+			LOG_E(g_coLog, "'p_pcoIPConn->Send': error code: '%d'", iRetVal);
 			break;
-		}
-		if (2 <= g_soMainCfg.m_iDebug) {
-			ParsePSPack ((SPSRequest*)mcPack, ui16PackLen, 0);
 		}
 
 		iRetVal = p_pcoIPConn->Recv (mcPack, sizeof(mcPack));
 		if (0 == iRetVal) {
-			g_coLog.WriteLog ("ActivateService: connection is closed");
+			LOG_E(g_coLog, "connection is closed");
 			iRetVal = -1;
 			break;
 		}
 		if (0 > iRetVal) {
-			g_coLog.WriteLog ("ActivateService: error occurred while processing 'p_pcoIPConn->Recv'. error code: '%d'", iRetVal);
+			LOG_E(g_coLog, "'p_pcoIPConn->Recv': error code: '%d'", iRetVal);
 			break;
 		}
 		iRetVal = ParsePSPack ((SPSRequest*)mcPack, iRetVal);
 	} while (0);
 
-	LEAVE_ROUT (iRetVal);
+	switch (iRetVal) {
+	case 0:
+	case -45:
+		LOG_N(
+			g_coLog,
+			"UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s'; Policy '%s' activated; result code: '%d'",
+			p_pcsoSessInfo->m_strUserName.c_str(),
+			p_pcsoSessInfo->m_strNASIPAddress.c_str(),
+			p_pcsoSessInfo->m_strSessionId.c_str(),
+			p_pcszServiceInfo,
+			iRetVal);
+		iRetVal = 0;
+		break;
+	default:
+		break;
+	}
 
 	return iRetVal;
 }
@@ -1168,18 +1006,22 @@ int AccountLogoff (
 	CPSPacket coPSPack;
 	SPSRequest *psoReq;
 
-	ENTER_ROUT;
-
 	do {
 		psoReq = (SPSRequest*)mcPack;
 
 		// ищем конфигурацию локации
 		std::map<std::string,CConfig*>::iterator iterLocConf;
 		CConfig *pcoLocConf;
-		iterLocConf = g_mapLocationConf.find (p_pcsoSessInfo->m_mcLocation);
+		iterLocConf = g_mapLocationConf.find (p_pcsoSessInfo->m_strLocation);
 		// если конфигурация локации не найдена
 		if (iterLocConf == g_mapLocationConf.end()) {
-			g_coLog.WriteLog ("AccountLogoff: Location '%s' configuration not found", p_pcsoSessInfo->m_mcLocation);
+			LOG_E(
+				g_coLog,
+				"UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s': 'p_pcoIPConn->Recv'. Location '%s' configuration not found",
+				p_pcsoSessInfo->m_strUserName.c_str(),
+				p_pcsoSessInfo->m_strNASIPAddress.c_str(),
+				p_pcsoSessInfo->m_strSessionId.c_str(),
+				p_pcsoSessInfo->m_strLocation.c_str());
 			iRetVal = -1;
 			break;
 		}
@@ -1187,7 +1029,6 @@ int AccountLogoff (
 
 		iRetVal = SetCommonCoASensorAttr (psoReq, sizeof (mcPack), p_pcsoSessInfo, pcoLocConf, p_pcoIPConn);
 		if (iRetVal) {
-			g_coLog.WriteLog ("AccountLogoff: SetCommonCoASensorAttr: error: code: '%d'", iRetVal);
 			break;
 		}
 
@@ -1198,32 +1039,63 @@ int AccountLogoff (
 		iRetVal = p_pcoIPConn->Send (mcPack, ui16PackLen);
 		if (iRetVal) {
 			iRetVal = errno;
-			g_coLog.WriteLog ("AccountLogoff: error occurred while processing 'p_pcoIPConn->Send'. error code: '%d'", iRetVal);
+			LOG_E(
+				g_coLog,
+				"UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s': 'p_pcoIPConn->Send'. error code: '%d'",
+				p_pcsoSessInfo->m_strUserName.c_str(),
+				p_pcsoSessInfo->m_strNASIPAddress.c_str(),
+				p_pcsoSessInfo->m_strSessionId.c_str(),
+				iRetVal);
 			break;
-		}
-		if (2 <= g_soMainCfg.m_iDebug) {
-			ParsePSPack ((SPSRequest*)mcPack, ui16PackLen, 0);
 		}
 
 		iRetVal = p_pcoIPConn->Recv (mcPack, sizeof(mcPack));
 		if (0 == iRetVal) {
 			iRetVal = -1;
-			g_coLog.WriteLog ("AccountLogoff: connection is closed");
+			LOG_E(
+				g_coLog,
+				"UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s': connection is closed",
+				p_pcsoSessInfo->m_strUserName.c_str(),
+				p_pcsoSessInfo->m_strNASIPAddress.c_str(),
+				p_pcsoSessInfo->m_strSessionId.c_str());
 			break;
 		}
 		if (0 > iRetVal) {
-			g_coLog.WriteLog ("AccountLogoff: error occurred while processing 'p_pcoIPConn->Recv'. error code: '%d'", iRetVal);
+			LOG_E(
+				g_coLog,
+				"UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s': 'p_pcoIPConn->Recv'. error code: '%d'",
+				p_pcsoSessInfo->m_strUserName.c_str(),
+				p_pcsoSessInfo->m_strNASIPAddress.c_str(),
+				p_pcsoSessInfo->m_strSessionId.c_str(),
+				iRetVal);
 			break;
 		}
 		iRetVal = ParsePSPack ((SPSRequest*)mcPack, iRetVal);
 	} while (0);
 
-	LEAVE_ROUT (iRetVal);
+	switch (iRetVal) {
+	case 0:
+	case -45:
+		LOG_N(
+			g_coLog,
+			"UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s'; user is disconnected; result code: '%d'",
+			p_pcsoSessInfo->m_strUserName.c_str(),
+			p_pcsoSessInfo->m_strNASIPAddress.c_str(),
+			p_pcsoSessInfo->m_strSessionId.c_str(),
+			iRetVal);
+		iRetVal = 0;
+		break;
+	default:
+		break;
+	}
 
 	return iRetVal;
 }
 
-int CheckSession (const SSessionInfo *p_pcsoSessInfo, CIPConnector *p_pcoIPConn, otl_connect &p_coDBConn)
+int CheckSession (
+	const SSessionInfo *p_pcsoSessInfo,
+	CIPConnector *p_pcoIPConn,
+	otl_connect &p_coDBConn)
 {
 	int iRetVal = 0;
 	int iFnRes;
@@ -1234,18 +1106,16 @@ int CheckSession (const SSessionInfo *p_pcsoSessInfo, CIPConnector *p_pcoIPConn,
 	__uint16_t ui16PackLen;
 	__uint16_t ui16AttrLen;
 
-	ENTER_ROUT;
-
 	do {
 		psoReq = (SPSRequest*)mcPack;
 
 		// ищем конфигурацию локации
 		std::map<std::string,CConfig*>::iterator iterLocConf;
-		iterLocConf = g_mapLocationConf.find (p_pcsoSessInfo->m_mcLocation);
+		iterLocConf = g_mapLocationConf.find (p_pcsoSessInfo->m_strLocation);
 		CConfig *pcoLocConf;
 		// если конфигурация локации не найдена
 		if (iterLocConf == g_mapLocationConf.end()) {
-			g_coLog.WriteLog ("CheckSession: Location '%s' configuration not found", p_pcsoSessInfo->m_mcLocation);
+			LOG_E(g_coLog, "Location '%s' configuration not found", p_pcsoSessInfo->m_strLocation.c_str());
 			iRetVal = -1;
 			break;
 		}
@@ -1253,7 +1123,6 @@ int CheckSession (const SSessionInfo *p_pcsoSessInfo, CIPConnector *p_pcoIPConn,
 
 		iRetVal = SetCommonCoASensorAttr (psoReq, sizeof (mcPack), p_pcsoSessInfo, pcoLocConf, p_pcoIPConn);
 		if (iRetVal) {
-			g_coLog.WriteLog ("CheckSession: SetCommonCoASensorAttr: error: code: '%d'", iRetVal);
 			break;
 		}
 
@@ -1264,40 +1133,62 @@ int CheckSession (const SSessionInfo *p_pcsoSessInfo, CIPConnector *p_pcoIPConn,
 		iRetVal = p_pcoIPConn->Send (mcPack, ui16PackLen);
 		if (iRetVal) {
 			iRetVal = errno;
-			g_coLog.WriteLog ("CheckSession: error occurred while processing 'p_pcoIPConn->Send'. error code: '%d'", iRetVal);
+			LOG_E(g_coLog, "error occurred while processing 'p_pcoIPConn->Send'. error code: '%d'", iRetVal);
 			break;
-		}
-		if (2 <= g_soMainCfg.m_iDebug) {
-			ParsePSPack ((SPSRequest*) mcPack, ui16PackLen, 0);
 		}
 
 		iRetVal = p_pcoIPConn->Recv (mcPack, sizeof(mcPack));
 		if (0 == iRetVal) {
 			iRetVal = -1;
-			g_coLog.WriteLog ("CheckSession: connection is closed");
+			LOG_E(g_coLog, "connection is closed");
 			break;
 		}
 		if (0 > iRetVal) {
-			g_coLog.WriteLog ("CheckSession: error occurred while processing 'p_pcoIPConn->Recv'. error code: '%d'", iRetVal);
+			LOG_E(g_coLog, "error occurred while processing 'p_pcoIPConn->Recv'. error code: '%d'", iRetVal);
 			break;
 		}
 		iRetVal = ParsePSPack ((SPSRequest*)mcPack, iRetVal);
 		/* если сессия не найдена */
-		if (-45 == iRetVal) {
+		switch (iRetVal) {
+		case -45:
+			/* фиксируем зависшую сессию (обычный запрос) */
 			iFnRes = FixStuckSession (p_pcsoSessInfo, p_coDBConn);
 			if (iFnRes) {
 				iRetVal = -1;
 				break;
 			}
+			/* фиксируем зависшую сессию (опциональный запрос) */
 			iFnRes = FixStuckSession (p_pcsoSessInfo, p_coDBConn, true);
 			if (iFnRes) {
 				iRetVal = -1;
 				break;
 			}
+			LOG_N(
+				g_coLog,
+				"UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s'; user session fixed",
+				p_pcsoSessInfo->m_strUserName.c_str(),
+				p_pcsoSessInfo->m_strNASIPAddress.c_str(),
+				p_pcsoSessInfo->m_strSessionId.c_str());
+			break;
+		case 0:
+			LOG_N(
+				g_coLog,
+				"UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s'; user session is active - nothing to do",
+				p_pcsoSessInfo->m_strUserName.c_str(),
+				p_pcsoSessInfo->m_strNASIPAddress.c_str(),
+				p_pcsoSessInfo->m_strSessionId.c_str());
+			break;
+		default:
+			LOG_E(
+				g_coLog,
+				"UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s': error code: '%d'",
+				p_pcsoSessInfo->m_strUserName.c_str(),
+				p_pcsoSessInfo->m_strNASIPAddress.c_str(),
+				p_pcsoSessInfo->m_strSessionId.c_str(),
+				iRetVal);
+			break;
 		}
 	} while (0);
-
-	LEAVE_ROUT (iRetVal);
 
 	return iRetVal;
 }
@@ -1312,16 +1203,11 @@ int ParsePSPack (const SPSRequest *p_pcsoResp, size_t p_stRespLen, int p_iFindRe
 	std::multimap<__uint16_t,SPSReqAttr*> mmapAttrList;
 	std::multimap<__uint16_t,SPSReqAttr*>::iterator iterAttrList;
 
-	ENTER_ROUT;
-
 	do {
 		iRetVal = coPSPack.Parse (p_pcsoResp, p_stRespLen, mmapAttrList);
 		if (iRetVal) {
-			g_coLog.WriteLog ("ParsePSPack: parsing failed");
+			LOG_E(g_coLog, "parsing failed");
 			break;
-		}
-		if (2 <= g_soMainCfg.m_iDebug) {
-			g_coLog.WriteLog ("%sPacket number: '%d'; Packet type: '0x%04x'; Packet size: '%d'", FOOT(g_soMainCfg.m_iDCD), ntohl (p_pcsoResp->m_uiReqNum), ntohs (p_pcsoResp->m_usReqType), ntohs (p_pcsoResp->m_usPackLen));
 		}
 		iterAttrList = mmapAttrList.find (PS_RESULT);
 		if (iterAttrList != mmapAttrList.end()) {
@@ -1333,7 +1219,7 @@ int ParsePSPack (const SPSRequest *p_pcsoResp, size_t p_stRespLen, int p_iFindRe
 			iRetVal = atol (mcValue);
 		} else {
 			if (p_iFindResult) {
-				g_coLog.WriteLog ("ParsePSPack: 'PS_RESULT' not found");
+				LOG_E(g_coLog, "'PS_RESULT' not found");
 				iRetVal = -1;
 				break;
 			}
@@ -1341,8 +1227,6 @@ int ParsePSPack (const SPSRequest *p_pcsoResp, size_t p_stRespLen, int p_iFindRe
 	} while (0);
 
 	coPSPack.EraseAttrList (mmapAttrList);
-
-	LEAVE_ROUT (iRetVal);
 
 	return iRetVal;
 }

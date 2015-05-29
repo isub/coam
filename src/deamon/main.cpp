@@ -79,8 +79,6 @@ int main(int argc, char *argv[])
 
 	struct sigaction soSigAct;
 
-	ENTER_ROUT;
-
 	/*
 	 *	Ensure that the configuration is initialized.
 	 */
@@ -113,10 +111,6 @@ int main(int argc, char *argv[])
 
 			case 'p':	/* pid file */
 				g_soMainCfg.m_pszPidFile = strdup(optarg);
-				break;
-
-			case 'x':
-				g_soMainCfg.m_iDebug = atoi (optarg);
 				break;
 
 			default:
@@ -212,11 +206,9 @@ int main(int argc, char *argv[])
 
 	do {
 		if (InitCoAManager ()) {
-			g_coLog.WriteLog ("InitCoAManager failed");
 			break;
 		}
-		g_coLog.WriteLog(
-			"Program initialized successfully");
+		LOG_N(g_coLog, "Program initialized successfully");
 
 		/*
 		 *	Process requests until HUP or exit.
@@ -231,11 +223,10 @@ int main(int argc, char *argv[])
 	} while (0);
 
 	if (iRetCode < 0) {
-		g_coLog.WriteLog ("Exiting due to internal error");
+		LOG_E(g_coLog, "exiting due to internal error");
 		iRetCode = 2;
 	} else {
-		g_coLog.WriteLog(
-			"Exiting normally.");
+		LOG_N(g_coLog, "exiting normally");
 	}
 
 	/*
@@ -250,8 +241,6 @@ int main(int argc, char *argv[])
 	if (pszConf) {
 		free (pszConf);
 	}
-
-	LEAVE_ROUT (iRetCode - 1);
 
 	return (iRetCode - 1);
 }
@@ -270,10 +259,10 @@ static void sig_handler(int sig)
 	char cAction;
 	if (psoSigDesc) {
 		cAction = psoSigDesc->m_cAction;
-		g_coLog.WriteLog ("Signal received: code '%d', description '%s'", sig, psoSigDesc->m_pszDescription);
+		LOG_N(g_coLog, "signal received: code '%d', description '%s'", sig, psoSigDesc->m_pszDescription);
 	} else {
 		cAction = -1;
-		g_coLog.WriteLog ("Signal received: code '%d'", sig);
+		LOG_N(g_coLog, "signal received: code '%d'", sig);
 	}
 
 	g_iEvent = cAction;

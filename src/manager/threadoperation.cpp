@@ -14,14 +14,12 @@ extern char g_mcDebugFooter[256];
 
 SThreadInfo *g_pmsoThreadInfo = NULL;
 unsigned int g_uiThreadCount;
-sem_t g_tSem;
+sem_t g_tThreadSem;
 
 int InitThreadPool ()
 {
 	int iRetVal = 0;
 	int iFnRes;
-
-	ENTER_ROUT;
 
 	do {
 		std::string strValue;
@@ -30,33 +28,29 @@ int InitThreadPool ()
 		/* запрашиваем значение из конфига */
 		iFnRes = g_coConf.GetParamValue (pcszConfParamName, strValue);
 		if (iFnRes) {
-			g_coLog.WriteLog ("InitThreadPool: Config parameter '%s' not found", pcszConfParamName);
+			LOG_F(g_coLog, "config parameter '%s' not found", pcszConfParamName);
 			iRetVal = -1000;
 			break;
 		}
 		if (0 == strValue.length ()) {
-			g_coLog.WriteLog ("InitThreadPool: Config parameter '%s' not defined", pcszConfParamName);
+			LOG_F(g_coLog, "config parameter '%s' not defined", pcszConfParamName);
 			iRetVal = -1010;
 			break;
 		}
 		/* преобразуем строку в число */
-		if (g_soMainCfg.m_iDebug > 0) {
-			g_uiThreadCount = 1;
-		} else {
-			g_uiThreadCount = atol (strValue.c_str ());
-		}
+		g_uiThreadCount = atol(strValue.c_str());
 		if (0 == g_uiThreadCount) {
-			g_coLog.WriteLog ("InitThreadPool: error: invalid '%s' value: '%s'", pcszConfParamName, strValue.c_str ());
+			LOG_F(g_coLog, "invalid '%s' value: '%s'", pcszConfParamName, strValue.c_str ());
 			iRetVal = -1020;
 			break;
 		}
 		/* инициализируем семафор */
-		iFnRes = sem_init (&g_tSem, 0, g_uiThreadCount);
+		iFnRes = sem_init (&g_tThreadSem, 0, g_uiThreadCount);
 		if (iFnRes) {
 			char mcError[0x400];
 			iRetVal = errno;
 			strerror_r (iRetVal, mcError, sizeof (mcError));
-			g_coLog.WriteLog ("InitThreadPool: sem_init: error: code '%d'; description: '%s'", iRetVal, mcError);
+			LOG_F(g_coLog, "sem_init: error: code '%d'; description: '%s'", iRetVal, mcError);
 			iRetVal = -1030;
 			break;
 		}
@@ -64,7 +58,7 @@ int InitThreadPool ()
 		g_pmsoThreadInfo = new SThreadInfo [g_uiThreadCount];
 		if (NULL == g_pmsoThreadInfo) {
 			/* память не выделена */
-			g_coLog.WriteLog ("InitThreadPool: can not allocate thread array: out of memory");
+			LOG_F(g_coLog, "can not allocate thread array: out of memory");
 			iRetVal = -1040;
 			break;
 		}
@@ -76,8 +70,6 @@ int InitThreadPool ()
 		}
 	} while (0);
 
-	LEAVE_ROUT (iRetVal);
-
 	return iRetVal;
 }
 
@@ -85,8 +77,6 @@ int InitThread (SThreadInfo &p_soThreadInfo)
 {
 	int iRetVal = 0;
 	int iFnRes;
-
-	ENTER_ROUT;
 
 	do {
 		/* для определенности устанавливаем в '0' код завершения потока */
@@ -100,7 +90,7 @@ int InitThread (SThreadInfo &p_soThreadInfo)
 		/* инициализируем мьютекс */
 		iFnRes = pthread_mutex_init (&(p_soThreadInfo.m_tMutex), NULL);
 		if (iFnRes) {
-			g_coLog.WriteLog ("InitThread: pthread_mutex_init error: '%d'", iFnRes);
+			LOG_F(g_coLog, "pthread_mutex_init error: '%d'", iFnRes);
 			iRetVal = -4000;
 			break;
 		}
@@ -108,14 +98,6 @@ int InitThread (SThreadInfo &p_soThreadInfo)
 		memset (&p_soThreadInfo.m_soSubscriberRefresh, 0, sizeof (p_soThreadInfo.m_soSubscriberRefresh));
 		/* создаем подключение к CoASensd */
 		p_soThreadInfo.m_pcoIPConn = new CIPConnector (10);
-		/* создаем подключение БД */
-		p_soThreadInfo.m_pcoDBConn = new otl_connect;
-		iFnRes = ConnectDB (*(p_soThreadInfo.m_pcoDBConn));
-		/* если возникла ошибка при подключении к БД */
-		if (iFnRes) {
-			iRetVal = 4010;
-			break;
-		}
 		/* после инициализации он нам нужен в закрытом состоянии на всякий случай пытаемся его закрыть */
 		pthread_mutex_trylock (&(p_soThreadInfo.m_tMutex));
 		/* запуск потока */
@@ -134,15 +116,11 @@ int InitThread (SThreadInfo &p_soThreadInfo)
 		CleanUpThreadInfo (&p_soThreadInfo);
 	}
 
-	LEAVE_ROUT (iRetVal);
-
 	return iRetVal;
 }
 
 void DeInitThreadPool ()
 {
-	ENTER_ROUT;
-
 	/* инициируем завершение работы потоков */
 	for (unsigned int i = 0; i < g_uiThreadCount; ++ i) {
 		/* задаем признак завершения работы потока */
@@ -165,24 +143,14 @@ void DeInitThreadPool ()
 		g_pmsoThreadInfo = NULL;
 	}
 	/* освобождаем семафор */
-	sem_destroy (&g_tSem);
-
-	LEAVE_ROUT (0);
+	sem_destroy (&g_tThreadSem);
 }
 
 void CleanUpThreadInfo (SThreadInfo *p_psoThreadInfo)
 {
-	ENTER_ROUT;
-
 	/* если в качестве параметра передан пустой указатель */
 	if (NULL == p_psoThreadInfo) {
 		return;
-	}
-	/* освобождаем память, занятую объектом подключения к БД */
-	if (p_psoThreadInfo->m_pcoDBConn) {
-		p_psoThreadInfo->m_pcoDBConn->logoff ();
-		delete p_psoThreadInfo->m_pcoDBConn;
-		p_psoThreadInfo->m_pcoDBConn = NULL;
 	}
 	/* освобождаем память, занятую объектом подключения к CoASensd */
 	if (p_psoThreadInfo->m_pcoIPConn) {
@@ -190,8 +158,6 @@ void CleanUpThreadInfo (SThreadInfo *p_psoThreadInfo)
 		delete p_psoThreadInfo->m_pcoIPConn;
 		p_psoThreadInfo->m_pcoIPConn = NULL;
 	}
-
-	LEAVE_ROUT (0);
 }
 
 int ThreadManager (const SSubscriberRefresh &p_soRefreshRecord)
@@ -200,11 +166,9 @@ int ThreadManager (const SSubscriberRefresh &p_soRefreshRecord)
 	int iFnRes;
 	unsigned int uiThreadInd;
 
-	ENTER_ROUT;
-
 	do {
 		/* ожидаем освобождения семафора */
-		sem_wait (&g_tSem);
+		sem_wait (&g_tThreadSem);
 		/* если пул потоков уничтожен выходим с ошибкой */
 		if (NULL == g_pmsoThreadInfo) {
 			iRetVal = -2000;
@@ -221,7 +185,7 @@ int ThreadManager (const SSubscriberRefresh &p_soRefreshRecord)
 		/* если свободный поток найти не удалось */
 		if (uiThreadInd == g_uiThreadCount) {
 			iRetVal = -2010;
-			g_coLog.WriteLog ("ThreadManager: error: It could not find free thread");
+			LOG_E(g_coLog, "it could not find free thread");
 			break;
 		}
 		/* передаем потоку необходимые данные */
@@ -231,13 +195,11 @@ int ThreadManager (const SSubscriberRefresh &p_soRefreshRecord)
 		/* запускаем поток в работу */
 		iFnRes = pthread_mutex_unlock (&(g_pmsoThreadInfo[uiThreadInd].m_tMutex));
 		if (iFnRes) {
-			g_coLog.WriteLog ("ThreadManager: error: pthread_mutex_unlock: code: '%d'", iFnRes);
+			LOG_E(g_coLog, "pthread_mutex_unlock: code: '%d'", iFnRes);
 			iRetVal = -2020;
 			break;
 		}
 	} while (0);
-
-	LEAVE_ROUT (iRetVal);
 
 	return iRetVal;
 }
@@ -245,13 +207,12 @@ int ThreadManager (const SSubscriberRefresh &p_soRefreshRecord)
 void *ThreadWorker (void *p_pvParam)
 {
 	int iFnRes;
-
-	ENTER_ROUT;
+	otl_connect *pcoDBConn = NULL;
 
 	/* копируем параметр потока */
 	SThreadInfo *psoThreadInfo = reinterpret_cast <SThreadInfo*> (p_pvParam);
 
-	g_coLog.WriteLog ("coam: ThreadWorker: thread started: '%p'", psoThreadInfo->m_tThreadId);
+	LOG_N(g_coLog, "thread started: '%p'", psoThreadInfo->m_tThreadId);
 
 	/* инициализируем код завершения потока */
 	psoThreadInfo->m_iRetVal = 0;
@@ -268,23 +229,34 @@ void *ThreadWorker (void *p_pvParam)
 		if (psoThreadInfo->m_iExit) {
 			break;
 		}
+		/* запрашиваем объект подключения к БД */
+		pcoDBConn = db_pool_get();
+		/* если объект подключения к БД не получен ничего не делаем, переходим к следущей итерации */
+		if (NULL == pcoDBConn)
+			continue;
 		/* запускаем обработку записи */
-		iFnRes = OperateSubscriber (psoThreadInfo->m_soSubscriberRefresh, psoThreadInfo->m_pcoIPConn, *(psoThreadInfo->m_pcoDBConn));
+		iFnRes = OperateSubscriber (psoThreadInfo->m_soSubscriberRefresh, psoThreadInfo->m_pcoIPConn, *pcoDBConn);
 		if (0 == iFnRes) {
 			/* если запись успешно обработана удаляем ее из очереди */
-			iFnRes = DeleteRefreshRecord (&psoThreadInfo->m_soSubscriberRefresh, *(psoThreadInfo->m_pcoDBConn));
+			iFnRes = DeleteRefreshRecord (&psoThreadInfo->m_soSubscriberRefresh, *pcoDBConn);
+		}
+		/* освобождаем подклчение к БД */
+		if (pcoDBConn) {
+			db_pool_release(pcoDBConn);
+			pcoDBConn = NULL;
 		}
 		/* освобождаем поток */
 		psoThreadInfo->m_iBusy = 0;
 		/* отпускаем семафор */
-		iFnRes = sem_post (&g_tSem);
+		iFnRes = sem_post (&g_tThreadSem);
 		if (iFnRes) { 
 			psoThreadInfo->m_iRetVal = -3010;
 			break;
 		}
 	}
 
-	LEAVE_ROUT (psoThreadInfo->m_iRetVal);
+	if (pcoDBConn)
+		db_pool_release(pcoDBConn);
 
 	pthread_exit (&(psoThreadInfo->m_iRetVal));
 }
