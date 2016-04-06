@@ -24,7 +24,7 @@
 #include "utils/pspacket/pspacket.h"
 #include "coam.h"
 
-/* глобальные переменные */
+/* РіР»РѕР±Р°Р»СЊРЅС‹Рµ РїРµСЂРµРјРµРЅРЅС‹Рµ */
 CConfig g_coConf;
 CLog g_coLog;
 SMainConfig g_soMainCfg;
@@ -78,25 +78,25 @@ int InitCoAManager () {
 			LOG_F(g_coLog, "Log file mask not defined");
 			break;
 		}
-		/* инициализация логгера */
+		/* РёРЅРёС†РёР°Р»РёР·Р°С†РёСЏ Р»РѕРіРіРµСЂР° */
 		iRetVal = g_coLog.Init (strConfParam.c_str());
 		if (iRetVal) {
 			LOG_F(g_coLog, "can not initialize log writer: code: '%d'", iRetVal);
 			break;
 		}
-		/* изменение пользователя и группы владельца демона */
+		/* РёР·РјРµРЅРµРЅРёРµ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ Рё РіСЂСѓРїРїС‹ РІР»Р°РґРµР»СЊС†Р° РґРµРјРѕРЅР° */
 		ChangeOSUser ();
-		/* инициализация пула подклчений к БД */
+		/* РёРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РїСѓР»Р° РїРѕРґРєР»С‡РµРЅРёР№ Рє Р‘Р” */
 		iRetVal = db_pool_init(&g_coLog, &g_coConf);
 		if (iRetVal) {
 			LOG_F(g_coLog, "can not initialize DB pool");
 		}
-		/* создание списка NASов */
+		/* СЃРѕР·РґР°РЅРёРµ СЃРїРёСЃРєР° NASРѕРІ */
 		iRetVal = CreateNASList (&g_mapNASList);
 		if (iRetVal) {
 			break;
 		}
-		/* инициализация пула потоков */
+		/* РёРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РїСѓР»Р° РїРѕС‚РѕРєРѕРІ */
 		iRetVal = InitThreadPool ();
 		if (iRetVal) {
 			break;
@@ -126,7 +126,7 @@ void ChangeOSUser () {
 	gid_t idUser, idGroup;
 	std::string strVal;
 
-	// изменяем id пользователя ОС
+	// РёР·РјРµРЅСЏРµРј id РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РћРЎ
 	iFnRes = g_coConf.GetParamValue ("os_user", strVal);
 	if (0 == iFnRes) {
 		pszUser = strVal.c_str();
@@ -161,14 +161,14 @@ void ChangeOSUser () {
 int ConnectCoASensor (CIPConnector &p_coIPConn) {
 	int iRetVal = 0;
 	std::vector<std::string> vectValList;
-	const char *pcszConfParam;	// значение параметра из конфигурации
-	const char *pcszHostName;	// имя удаленного хоста
-	uint16_t ui16Port;			// порт удаленного хоста
-	int iProtoType;				// тип протокола взаимодействия с удаленным хостом
+	const char *pcszConfParam;	// Р·РЅР°С‡РµРЅРёРµ РїР°СЂР°РјРµС‚СЂР° РёР· РєРѕРЅС„РёРіСѓСЂР°С†РёРё
+	const char *pcszHostName;	// РёРјСЏ СѓРґР°Р»РµРЅРЅРѕРіРѕ С…РѕСЃС‚Р°
+	uint16_t ui16Port;			// РїРѕСЂС‚ СѓРґР°Р»РµРЅРЅРѕРіРѕ С…РѕСЃС‚Р°
+	int iProtoType;				// С‚РёРї РїСЂРѕС‚РѕРєРѕР»Р° РІР·Р°РёРјРѕРґРµР№СЃС‚РІРёСЏ СЃ СѓРґР°Р»РµРЅРЅС‹Рј С…РѕСЃС‚РѕРј
 	int iFnRes;
 
 	do {
-		// выбираем сведения о сетевом протоколе
+		// РІС‹Р±РёСЂР°РµРј СЃРІРµРґРµРЅРёСЏ Рѕ СЃРµС‚РµРІРѕРј РїСЂРѕС‚РѕРєРѕР»Рµ
 		pcszConfParam = "coa_sensor_proto";
 		iRetVal = g_coConf.GetParamValue (pcszConfParam, vectValList);
 		if (iRetVal) {
@@ -190,7 +190,7 @@ int ConnectCoASensor (CIPConnector &p_coIPConn) {
 				vectValList[0].c_str());
 			break;
 		}
-		// выбираем имя хоста CoA-сенсора
+		// РІС‹Р±РёСЂР°РµРј РёРјСЏ С…РѕСЃС‚Р° CoA-СЃРµРЅСЃРѕСЂР°
 		vectValList.clear();
 		pcszConfParam = "coa_sensor_addr";
 		iRetVal = g_coConf.GetParamValue (pcszConfParam, vectValList);
@@ -202,7 +202,7 @@ int ConnectCoASensor (CIPConnector &p_coIPConn) {
 			break;
 		}
 		pcszHostName = vectValList[0].c_str();
-		// выбираем порт CoASensor-а
+		// РІС‹Р±РёСЂР°РµРј РїРѕСЂС‚ CoASensor-Р°
 		vectValList.clear();
 		pcszConfParam = "coa_sensor_port";
 		iRetVal = g_coConf.GetParamValue (pcszConfParam, vectValList);
@@ -215,7 +215,7 @@ int ConnectCoASensor (CIPConnector &p_coIPConn) {
 		}
 		ui16Port = atol (vectValList[0].c_str());
 
-		/* подключаемся к удаленному хосту */
+		/* РїРѕРґРєР»СЋС‡Р°РµРјСЃСЏ Рє СѓРґР°Р»РµРЅРЅРѕРјСѓ С…РѕСЃС‚Сѓ */
 		iFnRes = p_coIPConn.Connect (pcszHostName, ui16Port, iProtoType);
 		if (iFnRes) {
 			iRetVal = -1;
@@ -246,7 +246,7 @@ int MainWork ()
 	std::vector<SSubscriberRefresh>::iterator iterSubscr;
 
 	do {
-		/* загружаем список абонентов */
+		/* Р·Р°РіСЂСѓР¶Р°РµРј СЃРїРёСЃРѕРє Р°Р±РѕРЅРµРЅС‚РѕРІ */
 		iRetVal = CreateSubscriberList (&vectSubscriberList);
 		if (iRetVal) {
 			break;
@@ -257,10 +257,10 @@ int MainWork ()
 				g_mmapSessionListFull.clear();
 			}
 		}
-		/* обходим список абонентов */
+		/* РѕР±С…РѕРґРёРј СЃРїРёСЃРѕРє Р°Р±РѕРЅРµРЅС‚РѕРІ */
 		iterSubscr = vectSubscriberList.begin();
 		while (iterSubscr != vectSubscriberList.end()) {
-			/* обрабатыаем учетную запись абонента */
+			/* РѕР±СЂР°Р±Р°С‚С‹Р°РµРј СѓС‡РµС‚РЅСѓСЋ Р·Р°РїРёСЃСЊ Р°Р±РѕРЅРµРЅС‚Р° */
 			iRetVal = ThreadManager (*iterSubscr);
 			if (iRetVal) {
 				break;
@@ -357,18 +357,18 @@ int OperateSubscriber (
 {
 	int iRetVal = 0;
 	CTimeMeasurer coTM;
-	std::map<SSessionInfo,std::map<std::string,int> > mapSessionList; /* список сессий подписчика */
-	std::map<SSessionInfo,std::map<std::string,int> >::iterator iterSession; /* итератор списка сессий подписчика */
+	std::map<SSessionInfo,std::map<std::string,int> > mapSessionList; /* СЃРїРёСЃРѕРє СЃРµСЃСЃРёР№ РїРѕРґРїРёСЃС‡РёРєР° */
+	std::map<SSessionInfo,std::map<std::string,int> >::iterator iterSession; /* РёС‚РµСЂР°С‚РѕСЂ СЃРїРёСЃРєР° СЃРµСЃСЃРёР№ РїРѕРґРїРёСЃС‡РёРєР° */
 	int stPolicyCnt;
 	bool bPolicyFound;
 
 	LOG_N(g_coLog, "subscriber_id: '%s';", p_soRefreshRecord.m_mcSubscriberId);
 
 	do {
-		/* загружаем список сессий подписчика */
+		/* Р·Р°РіСЂСѓР¶Р°РµРј СЃРїРёСЃРѕРє СЃРµСЃСЃРёР№ РїРѕРґРїРёСЃС‡РёРєР° */
 		iRetVal = CreateSessionList (p_soRefreshRecord.m_mcSubscriberId, &mapSessionList, p_coDBConn);
 		if (iRetVal) {
-			/* если не удалось загрузить список сессий подписчика */
+			/* РµСЃР»Рё РЅРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ СЃРїРёСЃРѕРє СЃРµСЃСЃРёР№ РїРѕРґРїРёСЃС‡РёРєР° */
 			break;
 		}
 
@@ -376,7 +376,7 @@ int OperateSubscriber (
 
 		std::map<SPolicyInfo,std::map<SPolicyDetail,int> > mapPolicyList;
 
-		// обходим все сессии абонента
+		// РѕР±С…РѕРґРёРј РІСЃРµ СЃРµСЃСЃРёРё Р°Р±РѕРЅРµРЅС‚Р°
 		while (iterSession != mapSessionList.end()) {
 			iRetVal = OperateSubscriberSession (p_soRefreshRecord, iterSession->first, iterSession->second, mapPolicyList, *p_pcoIPConn, p_coDBConn);
 			if (iRetVal) {
@@ -416,20 +416,20 @@ int OperateSubscriberSession (
 			p_soSessionInfo.m_strNASIPAddress.c_str(),
 			p_soSessionInfo.m_strSessionId.c_str(),
 			p_soSessionInfo.m_strLocation.c_str());
-		/* ищем кешированные политики */
+		/* РёС‰РµРј РєРµС€РёСЂРѕРІР°РЅРЅС‹Рµ РїРѕР»РёС‚РёРєРё */
 		soPolicyInfo.m_strUserName = p_soSessionInfo.m_strUserName;
-		// ищем кешированную политику для локации сервера доступа
+		// РёС‰РµРј РєРµС€РёСЂРѕРІР°РЅРЅСѓСЋ РїРѕР»РёС‚РёРєСѓ РґР»СЏ Р»РѕРєР°С†РёРё СЃРµСЂРІРµСЂР° РґРѕСЃС‚СѓРїР°
 		soPolicyInfo.m_strLocation = p_soSessionInfo.m_strLocation;
 		iterProfilePolicy = p_mapProfilePolicyList.find (soPolicyInfo);
-		// ищем кешированную политику для локации DEFAULT
+		// РёС‰РµРј РєРµС€РёСЂРѕРІР°РЅРЅСѓСЋ РїРѕР»РёС‚РёРєСѓ РґР»СЏ Р»РѕРєР°С†РёРё DEFAULT
 		if (p_soSessionInfo.m_strLocation.compare("DEFAULT")) {
 			soPolicyInfo.m_strLocation = "DEFAULT";
 			iterProfilePolicyDef = p_mapProfilePolicyList.find (soPolicyInfo);
 		}
-		/* если кешированные политики не найдены запрашиваем их из БД */
+		/* РµСЃР»Рё РєРµС€РёСЂРѕРІР°РЅРЅС‹Рµ РїРѕР»РёС‚РёРєРё РЅРµ РЅР°Р№РґРµРЅС‹ Р·Р°РїСЂР°С€РёРІР°РµРј РёС… РёР· Р‘Р” */
 		if (iterProfilePolicy == p_mapProfilePolicyList.end() && iterProfilePolicyDef == p_mapProfilePolicyList.end()) {
 			iRetVal = CreatePolicyList (&(p_soSessionInfo), &p_mapProfilePolicyList, p_coDBConn);
-			/* если произошла ошибка при формировании списка политик завершаем работу */
+			/* РµСЃР»Рё РїСЂРѕРёР·РѕС€Р»Р° РѕС€РёР±РєР° РїСЂРё С„РѕСЂРјРёСЂРѕРІР°РЅРёРё СЃРїРёСЃРєР° РїРѕР»РёС‚РёРє Р·Р°РІРµСЂС€Р°РµРј СЂР°Р±РѕС‚Сѓ */
 			if (iRetVal) {
 				LOG_E(
 					g_coLog,
@@ -438,32 +438,32 @@ int OperateSubscriberSession (
 					iRetVal);
 				break;
 			}
-			/* повторно ищем кешированную политику для локации сервера доступа */
+			/* РїРѕРІС‚РѕСЂРЅРѕ РёС‰РµРј РєРµС€РёСЂРѕРІР°РЅРЅСѓСЋ РїРѕР»РёС‚РёРєСѓ РґР»СЏ Р»РѕРєР°С†РёРё СЃРµСЂРІРµСЂР° РґРѕСЃС‚СѓРїР° */
 			soPolicyInfo.m_strLocation = p_soSessionInfo.m_strLocation;
 			iterProfilePolicy = p_mapProfilePolicyList.find (soPolicyInfo);
-			/* повторно ищем кешированную политику для локации DEFAULT */
+			/* РїРѕРІС‚РѕСЂРЅРѕ РёС‰РµРј РєРµС€РёСЂРѕРІР°РЅРЅСѓСЋ РїРѕР»РёС‚РёРєСѓ РґР»СЏ Р»РѕРєР°С†РёРё DEFAULT */
 			if (p_soSessionInfo.m_strLocation.compare("DEFAULT")) {
 				soPolicyInfo.m_strLocation = "DEFAULT";
 				iterProfilePolicyDef = p_mapProfilePolicyList.find (soPolicyInfo);
 			}
 		}
-		/* если в записи очереди команд задано значение 'action' */
+		/* РµСЃР»Рё РІ Р·Р°РїРёСЃРё РѕС‡РµСЂРµРґРё РєРѕРјР°РЅРґ Р·Р°РґР°РЅРѕ Р·РЅР°С‡РµРЅРёРµ 'action' */
 		if (p_soRefreshRecord.m_mcAction[0]) {
-			/* отрабатываем команду 'logoff' */
+			/* РѕС‚СЂР°Р±Р°С‚С‹РІР°РµРј РєРѕРјР°РЅРґСѓ 'logoff' */
 			if (0 == strcmp ("logoff", p_soRefreshRecord.m_mcAction)) {
 				iRetVal = AccountLogoff (&(p_soSessionInfo), &p_coIPConn);
 				if (iRetVal) {
 					break;
 				}
 			}
-			/* отрабатываем команду 'checksession' */
+			/* РѕС‚СЂР°Р±Р°С‚С‹РІР°РµРј РєРѕРјР°РЅРґСѓ 'checksession' */
 			else if (0 == strcmp("checksession", p_soRefreshRecord.m_mcAction)) {
 				iRetVal = CheckSession(&(p_soSessionInfo), &p_coIPConn, p_coDBConn);
 				if (iRetVal) {
 					break;
 				}
 			}
-			/* неизвестное значение 'action' */
+			/* РЅРµРёР·РІРµСЃС‚РЅРѕРµ Р·РЅР°С‡РµРЅРёРµ 'action' */
 			else {
 				LOG_E(
 					g_coLog,
@@ -473,15 +473,15 @@ int OperateSubscriberSession (
 				iRetVal = -1;
 			}
 		}
-		/* если политики не найдены */
+		/* РµСЃР»Рё РїРѕР»РёС‚РёРєРё РЅРµ РЅР°Р№РґРµРЅС‹ */
 		else if (iterProfilePolicy == p_mapProfilePolicyList.end() && iterProfilePolicyDef == p_mapProfilePolicyList.end()) {
-			// политики не найдены, посылаем LogOff
+			// РїРѕР»РёС‚РёРєРё РЅРµ РЅР°Р№РґРµРЅС‹, РїРѕСЃС‹Р»Р°РµРј LogOff
 			iRetVal = AccountLogoff (&(p_soSessionInfo), &p_coIPConn);
 			if (iRetVal) {
 				break;
 			}
 		}
-		/* обрабатываем политики */
+		/* РѕР±СЂР°Р±Р°С‚С‹РІР°РµРј РїРѕР»РёС‚РёРєРё */
 		else {
 			if (iterProfilePolicy != p_mapProfilePolicyList.end ()) {
 				SelectActualPolicy (&p_soSessionPolicyList, &(iterProfilePolicy->second));
@@ -489,12 +489,12 @@ int OperateSubscriberSession (
 			if (iterProfilePolicyDef != p_mapProfilePolicyList.end ()) {
 				SelectActualPolicy (&p_soSessionPolicyList, &(iterProfilePolicyDef->second));
 			}
-			/* отключаем активные неактуальные политики */
+			/* РѕС‚РєР»СЋС‡Р°РµРј Р°РєС‚РёРІРЅС‹Рµ РЅРµР°РєС‚СѓР°Р»СЊРЅС‹Рµ РїРѕР»РёС‚РёРєРё */
 			iRetVal = DeactivateNotrelevantPolicy (p_soRefreshRecord, p_soSessionInfo, p_soSessionPolicyList, p_coIPConn);
 			if (iRetVal) {
 				break;
 			}
-			/* включаем неактивные актуальные политики */
+			/* РІРєР»СЋС‡Р°РµРј РЅРµР°РєС‚РёРІРЅС‹Рµ Р°РєС‚СѓР°Р»СЊРЅС‹Рµ РїРѕР»РёС‚РёРєРё */
 			if (iterProfilePolicy != p_mapProfilePolicyList.end()) {
 				iRetVal = ActivateInactivePolicy (p_soRefreshRecord, p_soSessionInfo, iterProfilePolicy->second, p_coIPConn);
 				if (iRetVal) {
@@ -612,30 +612,30 @@ int ModifyName(
 			iRetVal = -2;
 			break;
 		}
-		// выбираем первое правило
+		// РІС‹Р±РёСЂР°РµРј РїРµСЂРІРѕРµ РїСЂР°РІРёР»Рѕ
 		iRetVal = pcoLocConf->GetParamValue (p_pszModifyRule, vectValList);
 		if (iRetVal) {
 			break;
 		}
 		iterValList = vectValList.begin();
-		// обходим все правила изменения имен сервисов
+		// РѕР±С…РѕРґРёРј РІСЃРµ РїСЂР°РІРёР»Р° РёР·РјРµРЅРµРЅРёСЏ РёРјРµРЅ СЃРµСЂРІРёСЃРѕРІ
 		while (iterValList != vectValList.end()) {
-			// если длина префикса меньше или равна имени сервиса
+			// РµСЃР»Рё РґР»РёРЅР° РїСЂРµС„РёРєСЃР° РјРµРЅСЊС€Рµ РёР»Рё СЂР°РІРЅР° РёРјРµРЅРё СЃРµСЂРІРёСЃР°
 			if (iterValList->length() <= strModifyName.length()) {
 				int iFnRes;
-				// сравниваем префикс с началом имени сервиса
+				// СЃСЂР°РІРЅРёРІР°РµРј РїСЂРµС„РёРєСЃ СЃ РЅР°С‡Р°Р»РѕРј РёРјРµРЅРё СЃРµСЂРІРёСЃР°
 				iFnRes = memcmp(
 					iterValList->c_str(),
 					strModifyName.c_str(),
 					iterValList->length());
-				// если перфикс и начало имени сервиса совпадают
+				// РµСЃР»Рё РїРµСЂС„РёРєСЃ Рё РЅР°С‡Р°Р»Рѕ РёРјРµРЅРё СЃРµСЂРІРёСЃР° СЃРѕРІРїР°РґР°СЋС‚
 				if (0 == iFnRes) {
 					int iPrfLen = iterValList->length();
 					std::basic_string<char> bstrTmp;
-					// убираем префикс
+					// СѓР±РёСЂР°РµРј РїСЂРµС„РёРєСЃ
 					bstrTmp = strModifyName.substr (iPrfLen, strModifyName.length() - iPrfLen);
 					p_strValue = bstrTmp;
-					// завершаем поиск правила для имени сервиса
+					// Р·Р°РІРµСЂС€Р°РµРј РїРѕРёСЃРє РїСЂР°РІРёР»Р° РґР»СЏ РёРјРµРЅРё СЃРµСЂРІРёСЃР°
 					break;
 				}
 			}
@@ -658,7 +658,7 @@ bool Filter(const char *p_pszFilterName, std::string &p_strLocation, std::string
 	int iValueLen = p_strValue.length();
 
 	do {
-		// ищем конфигурацию локации
+		// РёС‰РµРј РєРѕРЅС„РёРіСѓСЂР°С†РёСЋ Р»РѕРєР°С†РёРё
 		iterLocation = g_mapLocationConf.find (p_strLocation);
 		if (iterLocation == g_mapLocationConf.end()) {
 			LOG_E(g_coLog, "Location '%s' configuration not found", p_strLocation.c_str());
@@ -671,18 +671,18 @@ bool Filter(const char *p_pszFilterName, std::string &p_strLocation, std::string
 			bRetVal = true;
 			break;
 		}
-		/* выбираем фильтры для локации */
+		/* РІС‹Р±РёСЂР°РµРј С„РёР»СЊС‚СЂС‹ РґР»СЏ Р»РѕРєР°С†РёРё */
 		if (0 != pcoLocConf->GetParamValue (p_pszFilterName, vectValList)) {
 			bRetVal = true;
 			break;
 		}
-		// обходим все правила изменения имен сервисов
+		// РѕР±С…РѕРґРёРј РІСЃРµ РїСЂР°РІРёР»Р° РёР·РјРµРЅРµРЅРёСЏ РёРјРµРЅ СЃРµСЂРІРёСЃРѕРІ
 		for (iterValList = vectValList.begin(); iterValList != vectValList.end(); ++iterValList) {
-			// если длина значения больше или равна длине значения фильтра
+			// РµСЃР»Рё РґР»РёРЅР° Р·РЅР°С‡РµРЅРёСЏ Р±РѕР»СЊС€Рµ РёР»Рё СЂР°РІРЅР° РґР»РёРЅРµ Р·РЅР°С‡РµРЅРёСЏ С„РёР»СЊС‚СЂР°
 			if (iValueLen >= iterValList->length()) {
-				// сравниваем префикс с началом имени сервиса
+				// СЃСЂР°РІРЅРёРІР°РµРј РїСЂРµС„РёРєСЃ СЃ РЅР°С‡Р°Р»РѕРј РёРјРµРЅРё СЃРµСЂРІРёСЃР°
 				iFnRes = iterValList->compare(0, iterValList->length(), p_strValue);
-				// если перфикс и начало имени сервиса совпадают
+				// РµСЃР»Рё РїРµСЂС„РёРєСЃ Рё РЅР°С‡Р°Р»Рѕ РёРјРµРЅРё СЃРµСЂРІРёСЃР° СЃРѕРІРїР°РґР°СЋС‚
 				if (0 == iFnRes) {
 					bRetVal = true;
 					break;
@@ -739,15 +739,15 @@ int SetCommonCoASensorAttr (SPSRequest *p_psoRequest, size_t p_stBufSize, const 
 
 		coPSPack.Init (p_psoRequest, p_stBufSize, g_uiReqNum++, COMMAND_REQ);
 
-		// добавляем атрибут PS_NASIP
+		// РґРѕР±Р°РІР»СЏРµРј Р°С‚СЂРёР±СѓС‚ PS_NASIP
 		ui16ValueLen = p_pcsoSessionInfo->m_strNASIPAddress.length();
 		ui16PackLen = coPSPack.AddAttr (p_psoRequest, p_stBufSize, PS_NASIP, p_pcsoSessionInfo->m_strNASIPAddress.data(), ui16ValueLen, 0);
 
-		// добавляем атрибут PS_SESSID
+		// РґРѕР±Р°РІР»СЏРµРј Р°С‚СЂРёР±СѓС‚ PS_SESSID
 		ui16ValueLen = p_pcsoSessionInfo->m_strSessionId.length();
 		ui16PackLen = coPSPack.AddAttr (p_psoRequest, p_stBufSize, PS_SESSID, p_pcsoSessionInfo->m_strSessionId.data(), ui16ValueLen, 0);
 
-		// дополнительные параметры запроса
+		// РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹Рµ РїР°СЂР°РјРµС‚СЂС‹ Р·Р°РїСЂРѕСЃР°
 		std::vector<std::string> vectParamVal;
 		std::vector<std::string>::iterator iterValList;
 		char mcAdditAttr[0x1000], *pszVal;
@@ -787,11 +787,11 @@ int DeActivateService (
 	do {
 		psoReq = (SPSRequest*)mcPack;
 
-		// ищем конфигурацию локации
+		// РёС‰РµРј РєРѕРЅС„РёРіСѓСЂР°С†РёСЋ Р»РѕРєР°С†РёРё
 		std::map<std::string,CConfig*>::iterator iterLocConf;
 		CConfig *pcoLocConf;
 		iterLocConf = g_mapLocationConf.find (p_pcsoSessInfo->m_strLocation);
-		// если конфигурация локации не найдена
+		// РµСЃР»Рё РєРѕРЅС„РёРіСѓСЂР°С†РёСЏ Р»РѕРєР°С†РёРё РЅРµ РЅР°Р№РґРµРЅР°
 		if (iterLocConf == g_mapLocationConf.end()) {
 			LOG_E(g_coLog, "Location '%s' configuration not found", p_pcsoSessInfo->m_strLocation.c_str());
 			iRetVal = -1;
@@ -804,30 +804,30 @@ int DeActivateService (
 			break;
 		}
 
-		// добавляем атрибут PS_COMMAND
+		// РґРѕР±Р°РІР»СЏРµРј Р°С‚СЂРёР±СѓС‚ PS_COMMAND
 		const char *pcszConfParamName;
 		char mcCommand[0x400];
 		std::string strCmd;
 		std::string strUseAttrName;
 
 		pcszConfParamName = "deactivation";
-		// запрашиваем значение конфигурационного параметра
+		// Р·Р°РїСЂР°С€РёРІР°РµРј Р·РЅР°С‡РµРЅРёРµ РєРѕРЅС„РёРіСѓСЂР°С†РёРѕРЅРЅРѕРіРѕ РїР°СЂР°РјРµС‚СЂР°
 		iRetVal = pcoLocConf->GetParamValue (pcszConfParamName, strCmd);
-		// если параметр не найден
+		// РµСЃР»Рё РїР°СЂР°РјРµС‚СЂ РЅРµ РЅР°Р№РґРµРЅ
 		if (iRetVal) {
 			LOG_E(g_coLog, "config parameter '%s' not found", pcszConfParamName);
 			break;
 		}
-		// или его значение не задано
+		// РёР»Рё РµРіРѕ Р·РЅР°С‡РµРЅРёРµ РЅРµ Р·Р°РґР°РЅРѕ
 		if (0 == strCmd.length()) {
 			LOG_E(g_coLog, "Config parameter '%s' not defined", pcszConfParamName);
 			iRetVal -1;
 			break;
 		}
-		// запрашиваем значение конфигурационного параметра
+		// Р·Р°РїСЂР°С€РёРІР°РµРј Р·РЅР°С‡РµРЅРёРµ РєРѕРЅС„РёРіСѓСЂР°С†РёРѕРЅРЅРѕРіРѕ РїР°СЂР°РјРµС‚СЂР°
 		pcszConfParamName = "use_policy_attr_name";
 		iRetVal = pcoLocConf->GetParamValue (pcszConfParamName, strUseAttrName);
-		// если параметр не найден
+		// РµСЃР»Рё РїР°СЂР°РјРµС‚СЂ РЅРµ РЅР°Р№РґРµРЅ
 		if (iRetVal) {
 			LOG_E(g_coLog, "Config parameter '%s' not found", pcszConfParamName);
 			break;
@@ -899,11 +899,11 @@ int ActivateService (
 	do {
 		psoReq = (SPSRequest*)mcPack;
 
-		// ищем конфигурацию локации
+		// РёС‰РµРј РєРѕРЅС„РёРіСѓСЂР°С†РёСЋ Р»РѕРєР°С†РёРё
 		std::map<std::string,CConfig*>::iterator iterLocConf;
 		CConfig *pcoLocConf;
 		iterLocConf = g_mapLocationConf.find (p_pcsoSessInfo->m_strLocation);
-		// если конфигурация локации не найдена
+		// РµСЃР»Рё РєРѕРЅС„РёРіСѓСЂР°С†РёСЏ Р»РѕРєР°С†РёРё РЅРµ РЅР°Р№РґРµРЅР°
 		if (iterLocConf == g_mapLocationConf.end()) {
 			LOG_E(g_coLog, "Location '%s' configuration not found", p_pcsoSessInfo->m_strLocation.c_str());
 			iRetVal = -1;
@@ -916,30 +916,30 @@ int ActivateService (
 			break;
 		}
 
-		// добавляем атрибут PS_COMMAND
+		// РґРѕР±Р°РІР»СЏРµРј Р°С‚СЂРёР±СѓС‚ PS_COMMAND
 		const char *pcszConfParamName;
 		char mcCommand[0x400];
 		std::string strCmd;
 		std::string strUserAttrName;
 
 		pcszConfParamName = "activation";
-		// запрашиваем значение конфигурационного параметра
+		// Р·Р°РїСЂР°С€РёРІР°РµРј Р·РЅР°С‡РµРЅРёРµ РєРѕРЅС„РёРіСѓСЂР°С†РёРѕРЅРЅРѕРіРѕ РїР°СЂР°РјРµС‚СЂР°
 		iRetVal = pcoLocConf->GetParamValue (pcszConfParamName, strCmd);
-		// если параметр не найден
+		// РµСЃР»Рё РїР°СЂР°РјРµС‚СЂ РЅРµ РЅР°Р№РґРµРЅ
 		if (iRetVal) {
 			LOG_E(g_coLog, "Config parameter '%s' not found", pcszConfParamName);
 			break;
 		}
-		// или его значение не задано
+		// РёР»Рё РµРіРѕ Р·РЅР°С‡РµРЅРёРµ РЅРµ Р·Р°РґР°РЅРѕ
 		if (0 == strCmd.length()) {
 			LOG_E(g_coLog, "Config parameter '%s' not defined", pcszConfParamName);
 			iRetVal -1;
 			break;
 		}
-		// запрашиваем значение конфигурационного параметра
+		// Р·Р°РїСЂР°С€РёРІР°РµРј Р·РЅР°С‡РµРЅРёРµ РєРѕРЅС„РёРіСѓСЂР°С†РёРѕРЅРЅРѕРіРѕ РїР°СЂР°РјРµС‚СЂР°
 		pcszConfParamName = "use_policy_attr_name";
 		iRetVal = pcoLocConf->GetParamValue (pcszConfParamName, strUserAttrName);
-		// если параметр не найден
+		// РµСЃР»Рё РїР°СЂР°РјРµС‚СЂ РЅРµ РЅР°Р№РґРµРЅ
 		if (iRetVal) {
 			LOG_E(g_coLog, "Config parameter '%s' not found", pcszConfParamName);
 			break;
@@ -1009,11 +1009,11 @@ int AccountLogoff (
 	do {
 		psoReq = (SPSRequest*)mcPack;
 
-		// ищем конфигурацию локации
+		// РёС‰РµРј РєРѕРЅС„РёРіСѓСЂР°С†РёСЋ Р»РѕРєР°С†РёРё
 		std::map<std::string,CConfig*>::iterator iterLocConf;
 		CConfig *pcoLocConf;
 		iterLocConf = g_mapLocationConf.find (p_pcsoSessInfo->m_strLocation);
-		// если конфигурация локации не найдена
+		// РµСЃР»Рё РєРѕРЅС„РёРіСѓСЂР°С†РёСЏ Р»РѕРєР°С†РёРё РЅРµ РЅР°Р№РґРµРЅР°
 		if (iterLocConf == g_mapLocationConf.end()) {
 			LOG_E(
 				g_coLog,
@@ -1032,7 +1032,7 @@ int AccountLogoff (
 			break;
 		}
 
-		// добавляем атрибут PS_COMMAND
+		// РґРѕР±Р°РІР»СЏРµРј Р°С‚СЂРёР±СѓС‚ PS_COMMAND
 		ui16ValueLen = strlen (CMD_ACCNT_LOGOFF);
 		ui16PackLen = coPSPack.AddAttr (psoReq, sizeof(mcPack), PS_COMMAND, CMD_ACCNT_LOGOFF, ui16ValueLen, 0);
 
@@ -1109,11 +1109,11 @@ int CheckSession (
 	do {
 		psoReq = (SPSRequest*)mcPack;
 
-		// ищем конфигурацию локации
+		// РёС‰РµРј РєРѕРЅС„РёРіСѓСЂР°С†РёСЋ Р»РѕРєР°С†РёРё
 		std::map<std::string,CConfig*>::iterator iterLocConf;
 		iterLocConf = g_mapLocationConf.find (p_pcsoSessInfo->m_strLocation);
 		CConfig *pcoLocConf;
-		// если конфигурация локации не найдена
+		// РµСЃР»Рё РєРѕРЅС„РёРіСѓСЂР°С†РёСЏ Р»РѕРєР°С†РёРё РЅРµ РЅР°Р№РґРµРЅР°
 		if (iterLocConf == g_mapLocationConf.end()) {
 			LOG_E(g_coLog, "Location '%s' configuration not found", p_pcsoSessInfo->m_strLocation.c_str());
 			iRetVal = -1;
@@ -1126,7 +1126,7 @@ int CheckSession (
 			break;
 		}
 
-		// добавляем атрибут PS_COMMAND
+		// РґРѕР±Р°РІР»СЏРµРј Р°С‚СЂРёР±СѓС‚ PS_COMMAND
 		ui16AttrLen = strlen (CMD_SESSION_QUERY);
 		ui16PackLen = coPSPack.AddAttr (psoReq, sizeof(mcPack), PS_COMMAND, CMD_SESSION_QUERY, ui16AttrLen, 0);
 
@@ -1148,16 +1148,16 @@ int CheckSession (
 			break;
 		}
 		iRetVal = ParsePSPack ((SPSRequest*)mcPack, iRetVal);
-		/* если сессия не найдена */
+		/* РµСЃР»Рё СЃРµСЃСЃРёСЏ РЅРµ РЅР°Р№РґРµРЅР° */
 		switch (iRetVal) {
 		case -45:
-			/* фиксируем зависшую сессию (обычный запрос) */
+			/* С„РёРєСЃРёСЂСѓРµРј Р·Р°РІРёСЃС€СѓСЋ СЃРµСЃСЃРёСЋ (РѕР±С‹С‡РЅС‹Р№ Р·Р°РїСЂРѕСЃ) */
 			iFnRes = FixStuckSession (p_pcsoSessInfo, p_coDBConn);
 			if (iFnRes) {
 				iRetVal = -1;
 				break;
 			}
-			/* фиксируем зависшую сессию (опциональный запрос) */
+			/* С„РёРєСЃРёСЂСѓРµРј Р·Р°РІРёСЃС€СѓСЋ СЃРµСЃСЃРёСЋ (РѕРїС†РёРѕРЅР°Р»СЊРЅС‹Р№ Р·Р°РїСЂРѕСЃ) */
 			iFnRes = FixStuckSession (p_pcsoSessInfo, p_coDBConn, true);
 			if (iFnRes) {
 				iRetVal = -1;

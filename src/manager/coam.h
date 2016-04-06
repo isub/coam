@@ -10,35 +10,35 @@ struct SMainConfig {
 	int		m_iDCD;			/* Debug Call Depth */
 };
 
-/* информация о записи в очереди обновления политик */
+/* РёРЅС„РѕСЂРјР°С†РёСЏ Рѕ Р·Р°РїРёСЃРё РІ РѕС‡РµСЂРµРґРё РѕР±РЅРѕРІР»РµРЅРёСЏ РїРѕР»РёС‚РёРє */
 struct SSubscriberRefresh {
 	char m_mcSubscriberId[64];
 	char m_mcRefreshDate[32];
 	char m_mcAction[32];
 };
 
-/* информация для работы потока */
+/* РёРЅС„РѕСЂРјР°С†РёСЏ РґР»СЏ СЂР°Р±РѕС‚С‹ РїРѕС‚РѕРєР° */
 struct SThreadInfo {
-	SSubscriberRefresh m_soSubscriberRefresh;	/* структура, содержащая информацию о записи в очереди обновления политик */
-	int m_iBusy;								/* признак занятости потока */
-	int m_iExit;								/* признак завершения работы потока */
-	int m_iRetVal;								/* код завершения потока */
-	pthread_mutex_t m_tMutex;					/* объект синхронизации потока */
-	pthread_t m_tThreadId;						/* дескриптор потока */
-	CIPConnector *m_pcoIPConn;					/* указатель объекта класса для взаимодействия с CoASensd */
+	SSubscriberRefresh m_soSubscriberRefresh;	/* СЃС‚СЂСѓРєС‚СѓСЂР°, СЃРѕРґРµСЂР¶Р°С‰Р°СЏ РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ Р·Р°РїРёСЃРё РІ РѕС‡РµСЂРµРґРё РѕР±РЅРѕРІР»РµРЅРёСЏ РїРѕР»РёС‚РёРє */
+	int m_iBusy;								/* РїСЂРёР·РЅР°Рє Р·Р°РЅСЏС‚РѕСЃС‚Рё РїРѕС‚РѕРєР° */
+	int m_iExit;								/* РїСЂРёР·РЅР°Рє Р·Р°РІРµСЂС€РµРЅРёСЏ СЂР°Р±РѕС‚С‹ РїРѕС‚РѕРєР° */
+	int m_iRetVal;								/* РєРѕРґ Р·Р°РІРµСЂС€РµРЅРёСЏ РїРѕС‚РѕРєР° */
+	pthread_mutex_t m_tMutex;					/* РѕР±СЉРµРєС‚ СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё РїРѕС‚РѕРєР° */
+	pthread_t m_tThreadId;						/* РґРµСЃРєСЂРёРїС‚РѕСЂ РїРѕС‚РѕРєР° */
+	CIPConnector *m_pcoIPConn;					/* СѓРєР°Р·Р°С‚РµР»СЊ РѕР±СЉРµРєС‚Р° РєР»Р°СЃСЃР° РґР»СЏ РІР·Р°РёРјРѕРґРµР№СЃС‚РІРёСЏ СЃ CoASensd */
 };
 
-/* инициализация потоков */
+/* РёРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РїРѕС‚РѕРєРѕРІ */
 int InitThreadPool ();
-/* инициализация потока */
+/* РёРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РїРѕС‚РѕРєР° */
 int InitThread (SThreadInfo &p_soThreadInfo);
-/* завершение работы потоков */
+/* Р·Р°РІРµСЂС€РµРЅРёРµ СЂР°Р±РѕС‚С‹ РїРѕС‚РѕРєРѕРІ */
 void DeInitThreadPool ();
-/* освобождение ресурсов потока */
+/* РѕСЃРІРѕР±РѕР¶РґРµРЅРёРµ СЂРµСЃСѓСЂСЃРѕРІ РїРѕС‚РѕРєР° */
 void CleanUpThreadInfo (SThreadInfo *p_psoThreadInfo);
-/* распределение задач между потоками */
+/* СЂР°СЃРїСЂРµРґРµР»РµРЅРёРµ Р·Р°РґР°С‡ РјРµР¶РґСѓ РїРѕС‚РѕРєР°РјРё */
 int ThreadManager (const SSubscriberRefresh &p_soRefreshRecord);
-/* процедура потока */
+/* РїСЂРѕС†РµРґСѓСЂР° РїРѕС‚РѕРєР° */
 void *ThreadWorker (void *p_pvParam);
 
 int LoadConf (const char *p_pszConfDir);
@@ -76,9 +76,9 @@ struct SPolicyDetail {
 };
 bool operator < (const SPolicyDetail &, const SPolicyDetail &);
 
-/* обработка полтитик одного подписчика */
+/* РѕР±СЂР°Р±РѕС‚РєР° РїРѕР»С‚РёС‚РёРє РѕРґРЅРѕРіРѕ РїРѕРґРїРёСЃС‡РёРєР° */
 int OperateSubscriber (const SSubscriberRefresh &p_soRefreshRecord, CIPConnector *p_pcoIPConn, otl_connect &p_coDBConn);
-/* обработка сессии подписчика */
+/* РѕР±СЂР°Р±РѕС‚РєР° СЃРµСЃСЃРёРё РїРѕРґРїРёСЃС‡РёРєР° */
 int OperateSubscriberSession (
 	const SSubscriberRefresh &p_soRefreshRecord,
 	const SSessionInfo &p_soSessionInfo,
@@ -92,7 +92,7 @@ int ActivateInactivePolicy (
 	const SSessionInfo &p_soSessionInfo,
 	std::map<SPolicyDetail,int> &p_mapPolicyDetail,
 	CIPConnector &p_coIPConn);
-/* выборка из БД списка активных сессий подписчика */
+/* РІС‹Р±РѕСЂРєР° РёР· Р‘Р” СЃРїРёСЃРєР° Р°РєС‚РёРІРЅС‹С… СЃРµСЃСЃРёР№ РїРѕРґРїРёСЃС‡РёРєР° */
 int CreateSessionList(const char *p_pcszSubscriberID, std::map<SSessionInfo, std::map<std::string, int> > *p_pmapSessList, otl_connect &p_coDBConn);
 int CreateSessionListFull(std::multimap<std::string,SSessionInfoFull> &p_mmapSessList);
 int GetNASLocation(std::string &p_strNASIPAddress, std::string &p_strLocation);

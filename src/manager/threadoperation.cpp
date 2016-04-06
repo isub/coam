@@ -25,46 +25,46 @@ int InitThreadPool ()
 		std::string strValue;
 		const char *pcszConfParamName = "thread_count";
 
-		/* запрашиваем значение из конфига */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 		iFnRes = g_coConf.GetParamValue (pcszConfParamName, strValue);
 		if (iFnRes) {
-			LOG_F(g_coLog, "config parameter '%s' not found", pcszConfParamName);
+			UTL_LOG_F(g_coLog, "config parameter '%s' not found", pcszConfParamName);
 			iRetVal = -1000;
 			break;
 		}
 		if (0 == strValue.length ()) {
-			LOG_F(g_coLog, "config parameter '%s' not defined", pcszConfParamName);
+			UTL_LOG_F(g_coLog, "config parameter '%s' not defined", pcszConfParamName);
 			iRetVal = -1010;
 			break;
 		}
-		/* преобразуем строку в число */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ */
 		g_uiThreadCount = atol(strValue.c_str());
 		if (0 == g_uiThreadCount) {
-			LOG_F(g_coLog, "invalid '%s' value: '%s'", pcszConfParamName, strValue.c_str ());
+			UTL_LOG_F(g_coLog, "invalid '%s' value: '%s'", pcszConfParamName, strValue.c_str ());
 			iRetVal = -1020;
 			break;
 		}
-		/* инициализируем семафор */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 		iFnRes = sem_init (&g_tThreadSem, 0, g_uiThreadCount);
 		if (iFnRes) {
 			char mcError[0x400];
 			iRetVal = errno;
 			strerror_r (iRetVal, mcError, sizeof (mcError));
-			LOG_F(g_coLog, "sem_init: error: code '%d'; description: '%s'", iRetVal, mcError);
+			UTL_LOG_F(g_coLog, "sem_init: error: code '%d'; description: '%s'", iRetVal, mcError);
 			iRetVal = -1030;
 			break;
 		}
-		/* выделяем память */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 		g_pmsoThreadInfo = new SThreadInfo [g_uiThreadCount];
 		if (NULL == g_pmsoThreadInfo) {
-			/* память не выделена */
-			LOG_F(g_coLog, "can not allocate thread array: out of memory");
+			/* пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
+			UTL_LOG_F(g_coLog, "can not allocate thread array: out of memory");
 			iRetVal = -1040;
 			break;
 		}
-		/* инициализируем массив */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 		memset (g_pmsoThreadInfo, 0, sizeof (*g_pmsoThreadInfo) * g_uiThreadCount);
-		/* выделяем необходимые ресурсы и создаем потоки */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 		for (unsigned int i = 0; i < g_uiThreadCount; ++ i) {
 			iFnRes = InitThread (g_pmsoThreadInfo[i]);
 		}
@@ -79,40 +79,40 @@ int InitThread (SThreadInfo &p_soThreadInfo)
 	int iFnRes;
 
 	do {
-		/* для определенности устанавливаем в '0' код завершения потока */
+		/* пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ '0' пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 		p_soThreadInfo.m_iRetVal = 0;
-		/* отмечаем, что поток пока не создан */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 		p_soThreadInfo.m_tThreadId = -1;
-		/* поток рождается свободным */
+		/* пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 		p_soThreadInfo.m_iBusy = 0;
-		/* и готовым продолжать работу */
+		/* пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 		p_soThreadInfo.m_iExit = 0;
-		/* инициализируем мьютекс */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 		iFnRes = pthread_mutex_init (&(p_soThreadInfo.m_tMutex), NULL);
 		if (iFnRes) {
-			LOG_F(g_coLog, "pthread_mutex_init error: '%d'", iFnRes);
+			UTL_LOG_F(g_coLog, "pthread_mutex_init error: '%d'", iFnRes);
 			iRetVal = -4000;
 			break;
 		}
-		/* инициализируем объкт структуры, содержащей информацию о записях очереди обновления политик */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 		memset (&p_soThreadInfo.m_soSubscriberRefresh, 0, sizeof (p_soThreadInfo.m_soSubscriberRefresh));
-		/* создаем подключение к CoASensd */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ CoASensd */
 		p_soThreadInfo.m_pcoIPConn = new CIPConnector (10);
-		/* после инициализации он нам нужен в закрытом состоянии на всякий случай пытаемся его закрыть */
+		/* пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 		pthread_mutex_trylock (&(p_soThreadInfo.m_tMutex));
-		/* запуск потока */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 		iFnRes = pthread_create (&(p_soThreadInfo.m_tThreadId), NULL, ThreadWorker, &(p_soThreadInfo));
 		if (iFnRes) {
-			/* отмечаем, что поток не создан */
+			/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 			p_soThreadInfo.m_tThreadId = -1;
 			iRetVal = -4020;
 			break;
 		}
 	} while (0);
 
-	/* если возникла ошибка инициализации потока*/
+	/* пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ*/
 	if (iRetVal) {
-		/* освобождаем занятые ресурсы */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 		CleanUpThreadInfo (&p_soThreadInfo);
 	}
 
@@ -121,38 +121,38 @@ int InitThread (SThreadInfo &p_soThreadInfo)
 
 void DeInitThreadPool ()
 {
-	/* инициируем завершение работы потоков */
+	/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 	for (unsigned int i = 0; i < g_uiThreadCount; ++ i) {
-		/* задаем признак завершения работы потока */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 		g_pmsoThreadInfo[i].m_iExit = 1;
-		/* разблокируем мьютекс */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 		pthread_mutex_unlock (&(g_pmsoThreadInfo[i].m_tMutex));
 	}
-	/* ожидаем завершения потоков */
+	/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 	for (unsigned int i = 0; i < g_uiThreadCount; ++ i) {
-		/* дожидаемся завершения работы потока */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 		pthread_join (g_pmsoThreadInfo[i].m_tThreadId, NULL);
-		/* поток более не существует */
+		/* пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 		g_pmsoThreadInfo[i].m_tThreadId = -1;
-		/* освобождаем ресурсы, выленные потоку */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 		CleanUpThreadInfo (&(g_pmsoThreadInfo[i]));
 	}
-	/* освобождаем память, веделенную для хранения информации о потоках */
+	/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 	if (g_pmsoThreadInfo) {
 		delete [] g_pmsoThreadInfo;
 		g_pmsoThreadInfo = NULL;
 	}
-	/* освобождаем семафор */
+	/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 	sem_destroy (&g_tThreadSem);
 }
 
 void CleanUpThreadInfo (SThreadInfo *p_psoThreadInfo)
 {
-	/* если в качестве параметра передан пустой указатель */
+	/* пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 	if (NULL == p_psoThreadInfo) {
 		return;
 	}
-	/* освобождаем память, занятую объектом подключения к CoASensd */
+	/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ CoASensd */
 	if (p_psoThreadInfo->m_pcoIPConn) {
 		p_psoThreadInfo->m_pcoIPConn->DisConnect ();
 		delete p_psoThreadInfo->m_pcoIPConn;
@@ -167,35 +167,35 @@ int ThreadManager (const SSubscriberRefresh &p_soRefreshRecord)
 	unsigned int uiThreadInd;
 
 	do {
-		/* ожидаем освобождения семафора */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 		sem_wait (&g_tThreadSem);
-		/* если пул потоков уничтожен выходим с ошибкой */
+		/* пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 		if (NULL == g_pmsoThreadInfo) {
 			iRetVal = -2000;
 			break;
 		}
-		/* ищем свободный поток */
+		/* пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ */
 		for (uiThreadInd = 0; uiThreadInd < g_uiThreadCount; ++ uiThreadInd) {
-			/* проверяем подходит ли нам этот поток */
-			if (-1 != g_pmsoThreadInfo[uiThreadInd].m_tThreadId			/* поток существует */
-					&& 0 == g_pmsoThreadInfo[uiThreadInd].m_iBusy) {	/* и не занят */
+			/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ */
+			if (-1 != g_pmsoThreadInfo[uiThreadInd].m_tThreadId			/* пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
+					&& 0 == g_pmsoThreadInfo[uiThreadInd].m_iBusy) {	/* пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ */
 				break;
 			}
 		}
-		/* если свободный поток найти не удалось */
+		/* пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 		if (uiThreadInd == g_uiThreadCount) {
 			iRetVal = -2010;
-			LOG_E(g_coLog, "it could not find free thread");
+			UTL_LOG_E(g_coLog, "it could not find free thread");
 			break;
 		}
-		/* передаем потоку необходимые данные */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 		g_pmsoThreadInfo[uiThreadInd].m_soSubscriberRefresh = p_soRefreshRecord;
-		/* фиксируем занятость потока */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 		g_pmsoThreadInfo[uiThreadInd].m_iBusy = 1;
-		/* запускаем поток в работу */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 		iFnRes = pthread_mutex_unlock (&(g_pmsoThreadInfo[uiThreadInd].m_tMutex));
 		if (iFnRes) {
-			LOG_E(g_coLog, "pthread_mutex_unlock: code: '%d'", iFnRes);
+			UTL_LOG_E(g_coLog, "pthread_mutex_unlock: code: '%d'", iFnRes);
 			iRetVal = -2020;
 			break;
 		}
@@ -209,45 +209,45 @@ void *ThreadWorker (void *p_pvParam)
 	int iFnRes;
 	otl_connect *pcoDBConn = NULL;
 
-	/* копируем параметр потока */
+	/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 	SThreadInfo *psoThreadInfo = reinterpret_cast <SThreadInfo*> (p_pvParam);
 
-	LOG_N(g_coLog, "thread started: '%p'", psoThreadInfo->m_tThreadId);
+	UTL_LOG_N(g_coLog, "thread started: '%p'", psoThreadInfo->m_tThreadId);
 
-	/* инициализируем код завершения потока */
+	/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 	psoThreadInfo->m_iRetVal = 0;
 
 	while (0 == psoThreadInfo->m_iExit) {
-		/* ждем разблокировки потока */
+		/* пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 		iFnRes = pthread_mutex_lock (&(psoThreadInfo->m_tMutex));
-		/* если при разблокировке произошла ошибка выходим из цикла и завершаем поток */
+		/* пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ */
 		if (iFnRes) {
 			psoThreadInfo->m_iRetVal = -3000;
 			break;
 		}
-		/* если наступила пора завершать работу выходим из цикла */
+		/* пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ */
 		if (psoThreadInfo->m_iExit) {
 			break;
 		}
-		/* запрашиваем объект подключения к БД */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅ */
 		pcoDBConn = db_pool_get();
-		/* если объект подключения к БД не получен ничего не делаем, переходим к следущей итерации */
+		/* пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 		if (NULL == pcoDBConn)
 			continue;
-		/* запускаем обработку записи */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 		iFnRes = OperateSubscriber (psoThreadInfo->m_soSubscriberRefresh, psoThreadInfo->m_pcoIPConn, *pcoDBConn);
 		if (0 == iFnRes) {
-			/* если запись успешно обработана удаляем ее из очереди */
+			/* пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 			iFnRes = DeleteRefreshRecord (&psoThreadInfo->m_soSubscriberRefresh, *pcoDBConn);
 		}
-		/* освобождаем подклчение к БД */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅ */
 		if (pcoDBConn) {
 			db_pool_release(pcoDBConn);
 			pcoDBConn = NULL;
 		}
-		/* освобождаем поток */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ */
 		psoThreadInfo->m_iBusy = 0;
-		/* отпускаем семафор */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 		iFnRes = sem_post (&g_tThreadSem);
 		if (iFnRes) { 
 			psoThreadInfo->m_iRetVal = -3010;

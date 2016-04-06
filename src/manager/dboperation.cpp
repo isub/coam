@@ -19,17 +19,17 @@ int CreateNASList (std::map<std::string,std::string> *p_pmapNASList)
 	do {
 		pcoDBConn = db_pool_get();
 		if (NULL == pcoDBConn) {
-			LOG_E(g_coLog, "can not to get free DB connection");
+			UTL_LOG_E(g_coLog, "can not to get free DB connection");
 			iRetVal = -1;
 			break;
 		}
 		iRetVal = g_coConf.GetParamValue (pszConfParam, strVal);
 		if (iRetVal) {
-			LOG_E(g_coLog, "config parameter '%s' not found", pszConfParam);
+			UTL_LOG_E(g_coLog, "config parameter '%s' not found", pszConfParam);
 			break;
 		}
 		if (0 == strVal.length()) {
-			LOG_E(g_coLog, "config parameter '%s' not defined", pszConfParam);
+			UTL_LOG_E(g_coLog, "config parameter '%s' not defined", pszConfParam);
 			break;
 		}
 		try {
@@ -49,8 +49,8 @@ int CreateNASList (std::map<std::string,std::string> *p_pmapNASList)
 						mcLocation));
 			}
 		} catch (otl_exception &coOTLExc) {
-			/* во время исполнения запроса произошла ошибка */
-			LOG_E(g_coLog, "code: '%d; message: '%s'; query: '%s'", coOTLExc.code, coOTLExc.msg, coOTLExc.stm_text);
+			/* пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
+			UTL_LOG_E(g_coLog, "code: '%d; message: '%s'; query: '%s'", coOTLExc.code, coOTLExc.msg, coOTLExc.stm_text);
 			iRetVal = coOTLExc.code;
 		}
 	} while (0);
@@ -70,28 +70,28 @@ int CreateSubscriberList (std::vector<SSubscriberRefresh> *p_pvectRefresh)
 	do {
 		pcoDBConn = db_pool_get();
 		if (NULL == pcoDBConn) {
-			LOG_E(g_coLog, "can not to get free DB connection");
+			UTL_LOG_E(g_coLog, "can not to get free DB connection");
 			break;
 		}
 		std::string strVal;
 		const char* pcszConfParam = "qr_refresh_list";
-		/* запрашиваем параметр конфигурациии */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 		iRetVal = g_coConf.GetParamValue (pcszConfParam, strVal);
 		if (iRetVal) {
-			LOG_E(g_coLog, "config parameter '%s' not found", pcszConfParam);
+			UTL_LOG_E(g_coLog, "config parameter '%s' not found", pcszConfParam);
 			iRetVal = -1;
 			break;
 		}
-		/* если значение параметра пустое */
+		/* пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 		if (0 == strVal.length()) {
-			LOG_E(g_coLog, "config parameter '%s' not defined", pcszConfParam);
+			UTL_LOG_E(g_coLog, "config parameter '%s' not defined", pcszConfParam);
 			iRetVal = -1;
 			break;
 		}
 
 		try {
 			SSubscriberRefresh soSubscr;
-			/* готовим запрос запрос к БД */
+			/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅ */
 			otl_stream coOTLStream (1000, strVal.c_str(), *pcoDBConn);
 			while (! coOTLStream.eof()) {
 				memset (&soSubscr, 0, sizeof(soSubscr));
@@ -102,8 +102,8 @@ int CreateSubscriberList (std::vector<SSubscriberRefresh> *p_pvectRefresh)
 				p_pvectRefresh->push_back (soSubscr);
 			}
 		} catch (otl_exception &coOTLExc) {
-			/* возникла ошибка выполнения запроса */
-			LOG_E(g_coLog, "code: '%d'; message: '%s'; query '%s';", coOTLExc.code, coOTLExc.msg, coOTLExc.stm_text);
+			/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
+			UTL_LOG_E(g_coLog, "code: '%d'; message: '%s'; query '%s';", coOTLExc.code, coOTLExc.msg, coOTLExc.stm_text);
 			iRetVal = coOTLExc.code;
 		}
 	} while (0);
@@ -127,7 +127,7 @@ int OperateSessionInfo(
 		std::map<SSessionInfo, std::map<std::string, int> >::iterator iterSessInfo;
 
 		iFnRes = GetNASLocation(p_soSessInfo.m_strNASIPAddress, p_soSessInfo.m_strLocation);
-		/* если NAS не найден */
+		/* пїЅпїЅпїЅпїЅ NAS пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 		if (iFnRes) {
 			p_soSessInfo.m_strLocation = "DEFAULT";
 		}
@@ -174,16 +174,16 @@ int CreateSessionList (
 				OperateSessionInfo(p_pmapSessList, iterSessInfoFull->second.m_soSessInfo, iterSessInfoFull->second.m_strServiceInfo);
 			}
 		} else {
-			/* запрашиваем в конфиге текст запроса */
+			/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 			iRetVal = g_coConf.GetParamValue (pszConfParam, strRequest);
 			if (iRetVal) {
-				LOG_E(g_coLog, "Config parameter '%s' not found", pszConfParam);
+				UTL_LOG_E(g_coLog, "Config parameter '%s' not found", pszConfParam);
 				iRetVal -1;
 				break;
 			}
-			/* если текст запроса пуст */
+			/* пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ */
 			if (0 == strRequest.length()) {
-				LOG_E(g_coLog, "Config parameter '%s' not defined", pszConfParam);
+				UTL_LOG_E(g_coLog, "Config parameter '%s' not defined", pszConfParam);
 				iRetVal -1;
 				break;
 			}
@@ -203,8 +203,8 @@ int CreateSessionList (
 					iFnRes = OperateSessionInfo(p_pmapSessList, soSessInfo, strCiscoServiceInfo);
 				}
 			} catch (otl_exception &coOTLExc) {
-				/* во время выполнения запроса произошла ошибка */
-					LOG_E(g_coLog, "code: '%d'; description: '%s'; query: '%s';", coOTLExc.code, coOTLExc.msg, coOTLExc.stm_text);
+				/* пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
+					UTL_LOG_E(g_coLog, "code: '%d'; description: '%s'; query: '%s';", coOTLExc.code, coOTLExc.msg, coOTLExc.stm_text);
 				iRetVal = coOTLExc.code;
 			}
 		}
@@ -226,19 +226,19 @@ int CreateSessionListFull(std::multimap<std::string, SSessionInfoFull> &p_mmapSe
 		pcoDBConn = db_pool_get();
 		if (NULL == pcoDBConn) {
 			iRetVal = -1;
-			LOG_F(g_coLog, "can not to get DB connection");
+			UTL_LOG_F(g_coLog, "can not to get DB connection");
 			break;
 		}
-		/* запрашиваем в конфиге текст запроса */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 		iRetVal = g_coConf.GetParamValue(pszConfParam, strRequest);
 		if (iRetVal) {
-			LOG_E(g_coLog, "Config parameter '%s' not found", pszConfParam);
+			UTL_LOG_E(g_coLog, "Config parameter '%s' not found", pszConfParam);
 			iRetVal = -2;
 			break;
 		}
-		/* если текст запроса пуст */
+		/* пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ */
 		if (0 == strRequest.length()) {
-			LOG_E(g_coLog, "Config parameter '%s' not defined", pszConfParam);
+			UTL_LOG_E(g_coLog, "Config parameter '%s' not defined", pszConfParam);
 			iRetVal = -3;
 			break;
 		}
@@ -263,8 +263,8 @@ int CreateSessionListFull(std::multimap<std::string, SSessionInfoFull> &p_mmapSe
 				}
 			}
 		} catch (otl_exception &coOTLExc) {
-			/* во время выполнения запроса произошла ошибка */
-			LOG_E(g_coLog, "code: '%d'; description: '%s'; query: '%s';", coOTLExc.code, coOTLExc.msg, coOTLExc.stm_text);
+			/* пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
+			UTL_LOG_E(g_coLog, "code: '%d'; description: '%s'; query: '%s';", coOTLExc.code, coOTLExc.msg, coOTLExc.stm_text);
 			iRetVal = coOTLExc.code;
 		}
 	} while (0);
@@ -275,7 +275,7 @@ int CreateSessionListFull(std::multimap<std::string, SSessionInfoFull> &p_mmapSe
 	if (0 == iRetVal) {
 		char mcTimeInterval[256];
 		coTM.GetDifference(NULL, mcTimeInterval, sizeof(mcTimeInterval));
-		LOG_N(g_coLog, "session list fetched in '%s'; row count: '%d'", mcTimeInterval, g_mmapSessionListFull.size());
+		UTL_LOG_N(g_coLog, "session list fetched in '%s'; row count: '%d'", mcTimeInterval, g_mmapSessionListFull.size());
 	}
 
 	return iRetVal;
@@ -293,15 +293,15 @@ int CreatePolicyList (
 
 	do {
 		pcszConfParam = "qr_policy_list";
-		/* запрашиваем текст запроса в конфиге */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 		iRetVal = g_coConf.GetParamValue (pcszConfParam, strRequest);
 		if (iRetVal) {
-			LOG_E(g_coLog, "config parameter '%s' not found", pcszConfParam);
+			UTL_LOG_E(g_coLog, "config parameter '%s' not found", pcszConfParam);
 			break;
 		}
-		/* если текст запроса пустой */
+		/* пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 		if (0 == strRequest.length()) {
-			LOG_E(g_coLog, "config parameter '%s' not defined", pcszConfParam);
+			UTL_LOG_E(g_coLog, "config parameter '%s' not defined", pcszConfParam);
 			iRetVal = -1;
 			break;
 		}
@@ -348,8 +348,8 @@ int CreatePolicyList (
 				}
 			}
 		} catch (otl_exception &coOTLExc) {
-			/* во время выполенния запроса произошла ошибка */
-			LOG_E(g_coLog, "code: '%d'; message: '%s'; query: '%s';", coOTLExc.code, coOTLExc.msg, coOTLExc.stm_text);
+			/* пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
+			UTL_LOG_E(g_coLog, "code: '%d'; message: '%s'; query: '%s';", coOTLExc.code, coOTLExc.msg, coOTLExc.stm_text);
 			iRetVal = coOTLExc.code;
 		}
 	} while (0);
@@ -367,15 +367,15 @@ int DeleteRefreshRecord (
 	std::string strRequest;
 
 	do {
-		/* запрашиваем в конфиге текст запроса */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 		iRetVal = g_coConf.GetParamValue (pszConfParam, strRequest);
 		if (iRetVal) {
-			LOG_E(g_coLog, "Config parameter '%s' not found", pszConfParam);
+			UTL_LOG_E(g_coLog, "Config parameter '%s' not found", pszConfParam);
 			break;
 		}
-		/* если текст запроса пустой */
+		/* пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 		if (0 == strRequest.length()) {
-			LOG_E(g_coLog, "Config parameter '%s' not defined", pszConfParam);
+			UTL_LOG_E(g_coLog, "Config parameter '%s' not defined", pszConfParam);
 			iRetVal -1;
 			break;
 		}
@@ -388,8 +388,8 @@ int DeleteRefreshRecord (
 			coOTLStream.flush ();
 			p_coDBConn.commit();
 		} catch (otl_exception &coOTLExc) {
-			/* во время выполнения запроса произошла ошибка */
-			LOG_E(g_coLog, "code: '%d'; message: '%s'; query: '%s'", coOTLExc.code, coOTLExc.msg, coOTLExc.stm_text);
+			/* пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
+			UTL_LOG_E(g_coLog, "code: '%d'; message: '%s'; query: '%s'", coOTLExc.code, coOTLExc.msg, coOTLExc.stm_text);
 			iRetVal = coOTLExc.code;
 		}
 
@@ -415,25 +415,25 @@ int FixStuckSession (
 	}
 
 	do {
-		/* запрашиваем в конфиге текст запроса */
+		/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 		iRetVal = g_coConf.GetParamValue (pszConfParam, strRequest);
 		if (iRetVal) {
-			/* опциональный запрос не обязательно должен быть описан в конфиге */
+			/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 			if (p_bOpt) {
 				iRetVal = 0;
 				break;
 			}
-			LOG_E(g_coLog, "config parameter '%s' not found", pszConfParam);
+			UTL_LOG_E(g_coLog, "config parameter '%s' not found", pszConfParam);
 			break;
 		}
-		/* если текст запроса пустой */
+		/* пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
 		if (0 == strRequest.length()) {
-			/* опциональный запрос не обязательно должен быть описан в конфиге */
+			/* пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 			if (p_bOpt) {
 				iRetVal = 0;
 				break;
 			}
-			LOG_E(g_coLog, "config parameter '%s' not defined", pszConfParam);
+			UTL_LOG_E(g_coLog, "config parameter '%s' not defined", pszConfParam);
 			iRetVal -1;
 			break;
 		}
@@ -447,8 +447,8 @@ int FixStuckSession (
 			coOTLStream.flush ();
 			p_coDBConn.commit();
 		} catch (otl_exception &coOTLExc) {
-			/* во время выполнения запроса произошла ошибка */
-			LOG_E(g_coLog, "code: '%d'; message: '%s'; query: '%s'", coOTLExc.code, coOTLExc.msg, coOTLExc.stm_text);
+			/* пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ */
+			UTL_LOG_E(g_coLog, "code: '%d'; message: '%s'; query: '%s'", coOTLExc.code, coOTLExc.msg, coOTLExc.stm_text);
 			iRetVal = coOTLExc.code;
 		}
 	} while (0);

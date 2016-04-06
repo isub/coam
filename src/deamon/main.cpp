@@ -133,9 +133,7 @@ int main(int argc, char *argv[])
 		pid_t pid = fork();
 
 		if (pid < 0) {
-			printf(
-				"Couldn't fork: '%s'\n",
-				strerror(errno));
+			printf("Couldn't fork: '%s'\n", strerror(errno));
 			exit(1);
 		}
 
@@ -186,9 +184,7 @@ int main(int argc, char *argv[])
 
 	devnull = open ("/dev/null", O_RDWR);
 	if (devnull < 0) {
-		printf(
-			"Failed opening /dev/null: '%s'\n",
-			strerror(errno));
+		printf("Failed opening /dev/null: '%s'\n", strerror(errno));
 		exit(1);
 	}
 	dup2 (devnull, STDIN_FILENO);
@@ -208,7 +204,7 @@ int main(int argc, char *argv[])
 		if (InitCoAManager ()) {
 			break;
 		}
-		LOG_N(g_coLog, "Program initialized successfully");
+		UTL_LOG_N(g_coLog, "Program initialized successfully");
 
 		/*
 		 *	Process requests until HUP or exit.
@@ -223,10 +219,10 @@ int main(int argc, char *argv[])
 	} while (0);
 
 	if (iRetCode < 0) {
-		LOG_E(g_coLog, "exiting due to internal error");
+		UTL_LOG_E(g_coLog, "exiting due to internal error");
 		iRetCode = 2;
 	} else {
-		LOG_N(g_coLog, "exiting normally");
+		UTL_LOG_N(g_coLog, "exiting normally");
 	}
 
 	/*
@@ -259,10 +255,10 @@ static void sig_handler(int sig)
 	char cAction;
 	if (psoSigDesc) {
 		cAction = psoSigDesc->m_cAction;
-		LOG_N(g_coLog, "signal received: code '%d', description '%s'", sig, psoSigDesc->m_pszDescription);
+		UTL_LOG_N(g_coLog, "signal received: code '%d', description '%s'", sig, psoSigDesc->m_pszDescription);
 	} else {
 		cAction = -1;
-		LOG_N(g_coLog, "signal received: code '%d'", sig);
+		UTL_LOG_N(g_coLog, "signal received: code '%d'", sig);
 	}
 
 	g_iEvent = cAction;
