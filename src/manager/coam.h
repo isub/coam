@@ -86,9 +86,8 @@ int OperateSubscriberSession (
 	std::map<SPolicyInfo,std::map<SPolicyDetail,int> > &p_mapProfilePolicyList,
 	CIPConnector &p_coIPConn,
 	otl_connect &p_coDBConn);
-int DeactivateNotrelevantPolicy (const SSubscriberRefresh &p_soRefreshRecord, const SSessionInfo &p_soSessionInfo, std::map<std::string,int> &p_soSessionPolicyList, CIPConnector &p_coIPConn);
+int DeactivateNotrelevantPolicy (const SSessionInfo &p_soSessionInfo, std::map<std::string,int> &p_soSessionPolicyList, CIPConnector &p_coIPConn);
 int ActivateInactivePolicy (
-	const SSubscriberRefresh &p_soRefreshRecord,
 	const SSessionInfo &p_soSessionInfo,
 	std::map<SPolicyDetail,int> &p_mapPolicyDetail,
 	CIPConnector &p_coIPConn);

@@ -74,7 +74,6 @@ int main(int argc, char *argv[])
 	int iRetCode = 0;
 	int iArgVal;
 	int iDontFork = false;
-	int iFlag = 0;
 	char *pszConf = NULL;
 
 	struct sigaction soSigAct;
@@ -219,7 +218,7 @@ int main(int argc, char *argv[])
 	} while (0);
 
 	if (iRetCode < 0) {
-		UTL_LOG_E(g_coLog, "exiting due to internal error");
+		UTL_LOG_F(g_coLog, "exiting due to internal error");
 		iRetCode = 2;
 	} else {
 		UTL_LOG_N(g_coLog, "exiting normally");
@@ -246,7 +245,7 @@ static void sig_handler(int sig)
 	if (getpid() != g_pidPid) _exit(sig);
 
 	SSignalDesc *psoSigDesc = NULL;
-	for (int i = 0; i < sizeof(g_soSigDesc)/sizeof(*g_soSigDesc); ++i) {
+	for (size_t i = 0; i < sizeof(g_soSigDesc)/sizeof(*g_soSigDesc); ++i) {
 		if (g_soSigDesc[i].m_iSigCode == sig) {
 			psoSigDesc = &g_soSigDesc[i];
 			break;

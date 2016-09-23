@@ -67,8 +67,17 @@ int InitThreadPool ()
 		/* �������� ����������� ������� � ������� ������ */
 		for (unsigned int i = 0; i < g_uiThreadCount; ++ i) {
 			iFnRes = InitThread (g_pmsoThreadInfo[i]);
+      if (iFnRes) {
+        iRetVal = iFnRes;
+        break;
+      }
 		}
 	} while (0);
+
+  if (iRetVal) {
+    delete g_pmsoThreadInfo;
+    g_pmsoThreadInfo = NULL;
+  }
 
 	return iRetVal;
 }
@@ -82,7 +91,7 @@ int InitThread (SThreadInfo &p_soThreadInfo)
 		/* ��� �������������� ������������� � '0' ��� ���������� ������ */
 		p_soThreadInfo.m_iRetVal = 0;
 		/* ��������, ��� ����� ���� �� ������ */
-		p_soThreadInfo.m_tThreadId = -1;
+		p_soThreadInfo.m_tThreadId = 0;
 		/* ����� ��������� ��������� */
 		p_soThreadInfo.m_iBusy = 0;
 		/* � ������� ���������� ������ */
@@ -104,7 +113,7 @@ int InitThread (SThreadInfo &p_soThreadInfo)
 		iFnRes = pthread_create (&(p_soThreadInfo.m_tThreadId), NULL, ThreadWorker, &(p_soThreadInfo));
 		if (iFnRes) {
 			/* ��������, ��� ����� �� ������ */
-			p_soThreadInfo.m_tThreadId = -1;
+			p_soThreadInfo.m_tThreadId = 0;
 			iRetVal = -4020;
 			break;
 		}
@@ -133,7 +142,7 @@ void DeInitThreadPool ()
 		/* ���������� ���������� ������ ������ */
 		pthread_join (g_pmsoThreadInfo[i].m_tThreadId, NULL);
 		/* ����� ����� �� ���������� */
-		g_pmsoThreadInfo[i].m_tThreadId = -1;
+		g_pmsoThreadInfo[i].m_tThreadId = 0;
 		/* ����������� �������, �������� ������ */
 		CleanUpThreadInfo (&(g_pmsoThreadInfo[i]));
 	}
@@ -152,7 +161,7 @@ void CleanUpThreadInfo (SThreadInfo *p_psoThreadInfo)
 	if (NULL == p_psoThreadInfo) {
 		return;
 	}
-	/* ����������� ������, ������� �������� ����������� � CoASensd */
+	/* ����������� ������, ������� �������� ����������� � coam */
 	if (p_psoThreadInfo->m_pcoIPConn) {
 		p_psoThreadInfo->m_pcoIPConn->DisConnect ();
 		delete p_psoThreadInfo->m_pcoIPConn;
@@ -177,8 +186,7 @@ int ThreadManager (const SSubscriberRefresh &p_soRefreshRecord)
 		/* ���� ��������� ����� */
 		for (uiThreadInd = 0; uiThreadInd < g_uiThreadCount; ++ uiThreadInd) {
 			/* ��������� �������� �� ��� ���� ����� */
-			if (-1 != g_pmsoThreadInfo[uiThreadInd].m_tThreadId			/* ����� ���������� */
-					&& 0 == g_pmsoThreadInfo[uiThreadInd].m_iBusy) {	/* � �� ����� */
+			if (0 == g_pmsoThreadInfo[uiThreadInd].m_iBusy) {	/* � �� ����� */
 				break;
 			}
 		}

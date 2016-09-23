@@ -11,7 +11,6 @@ extern char g_mcDebugFooter[256];
 int CreateNASList (std::map<std::string,std::string> *p_pmapNASList)
 {
 	int iRetVal = 0;
-	int iFnRes;
 	const char *pszConfParam = "qr_nas_list";
 	std::string strVal;
 	otl_connect *pcoDBConn = NULL;
@@ -64,7 +63,6 @@ int CreateNASList (std::map<std::string,std::string> *p_pmapNASList)
 int CreateSubscriberList (std::vector<SSubscriberRefresh> *p_pvectRefresh)
 {
 	int iRetVal = 0;
-	int iFnRes;
 	otl_connect *pcoDBConn = NULL;
 
 	do {
@@ -162,7 +160,6 @@ int CreateSessionList (
 	otl_connect &p_coDBConn)
 {
 	int iRetVal = 0;
-	int iFnRes;
 	const char *pszConfParam = "qr_session_list";
 	std::string strRequest;
 
@@ -178,13 +175,13 @@ int CreateSessionList (
 			iRetVal = g_coConf.GetParamValue (pszConfParam, strRequest);
 			if (iRetVal) {
 				UTL_LOG_E(g_coLog, "Config parameter '%s' not found", pszConfParam);
-				iRetVal -1;
+				iRetVal = -1;
 				break;
 			}
 			/* ���� ����� ������� ���� */
 			if (0 == strRequest.length()) {
 				UTL_LOG_E(g_coLog, "Config parameter '%s' not defined", pszConfParam);
-				iRetVal -1;
+				iRetVal = -1;
 				break;
 			}
 
@@ -200,7 +197,7 @@ int CreateSessionList (
 						>> soSessInfo.m_strNASIPAddress
 						>> soSessInfo.m_strSessionId
 						>> strCiscoServiceInfo;
-					iFnRes = OperateSessionInfo(p_pmapSessList, soSessInfo, strCiscoServiceInfo);
+					OperateSessionInfo(p_pmapSessList, soSessInfo, strCiscoServiceInfo);
 				}
 			} catch (otl_exception &coOTLExc) {
 				/* �� ����� ���������� ������� ��������� ������ */
@@ -216,7 +213,6 @@ int CreateSessionList (
 int CreateSessionListFull(std::multimap<std::string, SSessionInfoFull> &p_mmapSessList)
 {
 	int iRetVal = 0;
-	int iFnRes;
 	const char *pszConfParam = "qr_session_list_full";
 	std::string strRequest;
 	otl_connect *pcoDBConn = NULL;
@@ -287,7 +283,6 @@ int CreatePolicyList (
 	otl_connect &p_coDBConn)
 {
 	int iRetVal = 0;
-	int iFnRes;
 	std::string strRequest;
 	const char *pcszConfParam;
 
@@ -362,7 +357,6 @@ int DeleteRefreshRecord (
 	otl_connect &p_coDBConn)
 {
 	int iRetVal = 0;
-	int iFnRes;
 	const char *pszConfParam = "qr_delete_refresh_row";
 	std::string strRequest;
 
@@ -376,7 +370,7 @@ int DeleteRefreshRecord (
 		/* ���� ����� ������� ������ */
 		if (0 == strRequest.length()) {
 			UTL_LOG_E(g_coLog, "Config parameter '%s' not defined", pszConfParam);
-			iRetVal -1;
+			iRetVal = -1;
 			break;
 		}
 
@@ -404,7 +398,6 @@ int FixStuckSession (
 	bool p_bOpt)
 {
 	int iRetVal = 0;
-	int iFnRes;
 	const char *pszConfParam;
 	std::string strRequest;
 
@@ -434,7 +427,7 @@ int FixStuckSession (
 				break;
 			}
 			UTL_LOG_E(g_coLog, "config parameter '%s' not defined", pszConfParam);
-			iRetVal -1;
+			iRetVal = -1;
 			break;
 		}
 
