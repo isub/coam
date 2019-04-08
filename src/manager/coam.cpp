@@ -86,8 +86,43 @@ int InitCoAManager ()
 		}
 		/* изменение пользователя и группы владельца демона */
 		ChangeOSUser ();
+
+		std::string strDBPoolSize;
+		int iDBPoolSize;
+		int iFnRes;
+
+		const char *pcszConfParam = "db_pool_size";
+		iFnRes = g_coConf.GetParamValue( pcszConfParam, strDBPoolSize );
+		if( iFnRes || 0 == strDBPoolSize.length() ) {
+			UTL_LOG_F( g_coLog, "dbpool: configuration parameter '%s' not defined", pcszConfParam );
+		} else {
+			iDBPoolSize = atoi( strDBPoolSize.c_str() );
+		}
+
+		std::string strDBUser, strDBPswd, strDBDescr;
+
+		pcszConfParam = "db_user";
+		iFnRes = g_coConf.GetParamValue( pcszConfParam, strDBUser );
+		if( iFnRes || 0 == strDBUser.length() ) {
+			UTL_LOG_F( g_coLog, "dbpool: configuration parameter '%s' not defined", pcszConfParam );
+		}
+
+		/* запрашиваем пароль пользователя БД из конфигурации */
+		pcszConfParam = "db_pswd";
+		iFnRes = g_coConf.GetParamValue( pcszConfParam, strDBPswd );
+		if( iFnRes || 0 == strDBPswd.length() ) {
+			UTL_LOG_F( g_coLog, "dbpool: configuration parameter '%s' not defined", pcszConfParam );
+		}
+
+		/* запрашиваем дескриптор БД из конфигурации */
+		pcszConfParam = "db_descr";
+		iFnRes = g_coConf.GetParamValue( pcszConfParam, strDBDescr );
+		if( iFnRes || 0 == strDBDescr.length() ) {
+			UTL_LOG_F( g_coLog, "dbpool: configuration parameter '%s' not defined", pcszConfParam );
+		}
+
 		/* инициализация пула подклчений к БД */
-		iRetVal = db_pool_init(&g_coLog, &g_coConf);
+		iRetVal = db_pool_init(&g_coLog, strDBUser, strDBPswd, strDBDescr, iDBPoolSize );
 		if (iRetVal) {
 			UTL_LOG_F(g_coLog, "can not initialize DB pool");
 		}
@@ -572,6 +607,61 @@ int GetNASLocation (std::string &p_strNASIPAddress, std::string &p_strLocation)
 	return iRetVal;
 }
 
+bool ModifyValue( std::string &p_strModificator, std::string &p_strValue )
+{
+	if( 0 != p_strModificator.length() ) {
+	} else {
+		return false;
+	}
+
+	/* for back compatibility: if modifier is not specified assumed modifier as [-]prefix */
+	// если длина префикса меньше или равна имени сервиса
+	if( p_strModificator[0] != '+' && p_strModificator[p_strModificator.length() - 1] != '+' && p_strModificator[p_strModificator.length() - 1] != '-' ) {
+		/* remove [-]prfix */
+		if( p_strModificator[0] == '-' ) {
+			/* remove modificator */
+			p_strModificator.erase( 0, 1 );
+		}
+		if( 0 == p_strValue.compare( 0, p_strModificator.length(), p_strModificator ) ) {
+			// если перфикс и начало имени сервиса совпадают
+			// убираем префикс
+			p_strValue.erase( 0, p_strModificator.length() );
+			// завершаем поиск правила для имени сервиса
+			return true;
+		}
+	}
+
+	if( p_strModificator[p_strModificator.length() - 1] == '-' && p_strModificator.length() <= p_strValue.length() ) {
+		/* remove suffix- */
+		/*remove modificator */
+		p_strModificator.erase( p_strModificator.length() - 1, 1 );
+		/* remove suffix */
+		p_strValue.erase( p_strValue.length() - p_strModificator.length(), p_strModificator.length() );
+	}
+
+	if( p_strModificator[0] == '+' ) {
+		/* append as +prefix */
+		/* remove modificator */
+		p_strModificator.erase( 0, 1 );
+		/* append modificator */
+		p_strValue.replace( 0, 0, p_strModificator );
+
+		return true;
+	}
+
+	if( p_strModificator[p_strModificator.length() - 1] == '+' ) {
+		/* append as postfix+ */
+		/* remove modificator */
+		p_strModificator.erase( p_strModificator.length() - 1, 1 );
+		/* append modificator */
+		p_strValue.replace( p_strValue.length(), 0, p_strModificator );
+
+		return true;
+	}
+
+	return false;
+}
+
 int ModifyName(
 	const char *p_pszModifyRule,
 	std::string &p_strLocation,
@@ -582,10 +672,8 @@ int ModifyName(
 	std::vector<std::string> vectValList;
 	std::vector<std::string>::iterator iterValList;
 	CConfig *pcoLocConf;
-	std::string strModifyName;
 
 	do {
-		strModifyName = p_strValue;
 		iterLocation = g_mapLocationConf.find (p_strLocation);
 		if (iterLocation == g_mapLocationConf.end()) {
 			UTL_LOG_E(g_coLog, "Location '%s' configuration not found", p_strLocation.c_str());
@@ -598,32 +686,18 @@ int ModifyName(
 			iRetVal = -2;
 			break;
 		}
-		// выбираем первое правило
 		iRetVal = pcoLocConf->GetParamValue (p_pszModifyRule, vectValList);
 		if (iRetVal) {
 			break;
 		}
+		// выбираем первое правило
 		iterValList = vectValList.begin();
 		// обходим все правила изменения имен сервисов
 		while (iterValList != vectValList.end()) {
-			// если длина префикса меньше или равна имени сервиса
-			if (iterValList->length() <= strModifyName.length()) {
-				int iFnRes;
-				// сравниваем префикс с началом имени сервиса
-				iFnRes = memcmp(
-					iterValList->c_str(),
-					strModifyName.c_str(),
-					iterValList->length());
-				// если перфикс и начало имени сервиса совпадают
-				if (0 == iFnRes) {
-					int iPrfLen = iterValList->length();
-					std::basic_string<char> bstrTmp;
-					// убираем префикс
-					bstrTmp = strModifyName.substr (iPrfLen, strModifyName.length() - iPrfLen);
-					p_strValue = bstrTmp;
-					// завершаем поиск правила для имени сервиса
-					break;
-				}
+			UTL_LOG_N( g_coLog, "rule: %s; location: %s; value: %s", p_pszModifyRule, p_strLocation.c_str(), p_strValue.c_str() );
+			if( ModifyValue( *iterValList, p_strValue ) ) {
+				UTL_LOG_N( g_coLog, "modified value: rule: %s; location: %s; value: %s", p_pszModifyRule, p_strLocation.c_str(), p_strValue.c_str() );
+				break;
 			}
 			++iterValList;
 		}
@@ -666,11 +740,14 @@ bool Filter(const char *p_pszFilterName, std::string &p_strLocation, std::string
 			// если длина значения больше или равна длине значения фильтра
 			if (static_cast<size_t>(iValueLen) >= iterValList->length()) {
 				// сравниваем префикс с началом имени сервиса
-				iFnRes = iterValList->compare(0, iterValList->length(), p_strValue);
+				iFnRes = p_strValue.compare( 0, iterValList->length(), *iterValList );
 				// если перфикс и начало имени сервиса совпадают
 				if (0 == iFnRes) {
 					bRetVal = true;
+					UTL_LOG_N( g_coLog, "value %s matched to filter %s", p_strValue.c_str(), iterValList->c_str() );
 					break;
+				} else {
+					UTL_LOG_N( g_coLog, "value %s NOT matched to filter %s(length: %u)", p_strValue.c_str(), iterValList->c_str(), iterValList->length() );
 				}
 			}
 		}

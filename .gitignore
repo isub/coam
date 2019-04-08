@@ -50,3 +50,7 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+.vs/
+*.sln
+*.vcxproj*

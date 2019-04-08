@@ -1,0 +1,9 @@
+sess_info_pref=
+policy_pref=
+policy_filter=ERX-Service-Activate
+
+activation=ERX-Service-Activate
+deactivation=ERX-Service-Deactivate
+use_policy_attr_name=yes
+
+additional_req_attr=0x0301=3799

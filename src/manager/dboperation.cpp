@@ -129,7 +129,8 @@ int OperateSessionInfo(
 		if (iFnRes) {
 			p_soSessInfo.m_strLocation = "DEFAULT";
 		}
-		ModifyName("sess_info_pref", p_soSessInfo.m_strLocation, p_strServiceInfo);
+		ModifyName("sess_info_pref", p_soSessInfo.m_strLocation, p_strServiceInfo); /* it should be deprecated */
+		ModifyName("activeServiceName_modifier", p_soSessInfo.m_strLocation, p_strServiceInfo);
 		iterSessInfo = p_pmapSessList->find(p_soSessInfo);
 		if (iterSessInfo != p_pmapSessList->end()) {
 			iterSessInfo->second.insert(
@@ -319,10 +320,20 @@ int CreatePolicyList (
 				if (0 == soPolicyInfo.m_strLocation.length()) {
 					soPolicyInfo.m_strLocation = "DEFAULT";
 				}
-				if (! Filter ("policy_filter", soPolicyInfo.m_strLocation, soPolicyDetail.m_strAttr)) {
+				if (! Filter ("policy_filter", soPolicyInfo.m_strLocation, soPolicyDetail.m_strAttr)) { /* it should be deprecated */
+					UTL_LOG_N( g_coLog, "attribute was declined by policy_filter: location: %s; attr: %s", soPolicyInfo.m_strLocation.c_str(), soPolicyDetail.m_strAttr.c_str() );
 					continue;
 				}
-				ModifyName ("policy_pref", soPolicyInfo.m_strLocation, soPolicyDetail.m_strValue);
+				if (! Filter ("policyAttr_filter", soPolicyInfo.m_strLocation, soPolicyDetail.m_strAttr)) {
+					UTL_LOG_N( g_coLog, "attribute was declined by policyAttr_filter: location: %s; attr: %s", soPolicyInfo.m_strLocation.c_str(), soPolicyDetail.m_strAttr.c_str() );
+					continue;
+				}
+				if( ! Filter( "policyName_filter", soPolicyInfo.m_strLocation, soPolicyDetail.m_strValue ) ) {
+					UTL_LOG_N( g_coLog, "attribute was declined by policyName_filter: location: %s; attr: %s", soPolicyInfo.m_strLocation.c_str(), soPolicyDetail.m_strValue.c_str() );
+					continue;
+				}
+				ModifyName ("policy_pref", soPolicyInfo.m_strLocation, soPolicyDetail.m_strValue); /* it should be deprecated */
+				ModifyName( "policyName_modifier", soPolicyInfo.m_strLocation, soPolicyDetail.m_strValue );
 				iterPolicy = p_pmapPolicy->find (soPolicyInfo);
 				if (iterPolicy != p_pmapPolicy->end()) {
 					iterPolicy->second.insert(
