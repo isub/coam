@@ -62,8 +62,6 @@ int InitThreadPool ()
 			iRetVal = -1040;
 			break;
 		}
-		/* �������������� ������ */
-		memset (g_pmsoThreadInfo, 0, sizeof (*g_pmsoThreadInfo) * g_uiThreadCount);
 		/* �������� ����������� ������� � ������� ������ */
 		for (unsigned int i = 0; i < g_uiThreadCount; ++ i) {
 			iFnRes = InitThread (g_pmsoThreadInfo[i]);
@@ -103,9 +101,7 @@ int InitThread (SThreadInfo &p_soThreadInfo)
 			iRetVal = -4000;
 			break;
 		}
-		/* �������������� ����� ���������, ���������� ���������� � ������� ������� ���������� ������� */
-		memset (&p_soThreadInfo.m_soSubscriberRefresh, 0, sizeof (p_soThreadInfo.m_soSubscriberRefresh));
-		/* ������� ����������� � CoASensd */
+		/* ������� ����������� � coas */
 		p_soThreadInfo.m_pcoIPConn = new CIPConnector (10);
 		/* ����� ������������� �� ��� ����� � �������� ��������� �� ������ ������ �������� ��� ������� */
 		pthread_mutex_trylock (&(p_soThreadInfo.m_tMutex));
@@ -169,7 +165,7 @@ void CleanUpThreadInfo (SThreadInfo *p_psoThreadInfo)
 	}
 }
 
-int ThreadManager (const SSubscriberRefresh &p_soRefreshRecord)
+int ThreadManager (const SRefreshRecord &p_soRefreshRecord)
 {
 	int iRetVal = 0;
 	int iFnRes;
@@ -197,7 +193,7 @@ int ThreadManager (const SSubscriberRefresh &p_soRefreshRecord)
 			break;
 		}
 		/* �������� ������ ����������� ������ */
-		g_pmsoThreadInfo[uiThreadInd].m_soSubscriberRefresh = p_soRefreshRecord;
+		g_pmsoThreadInfo[uiThreadInd].m_soRefreshRecord = p_soRefreshRecord;
 		/* ��������� ��������� ������ */
 		g_pmsoThreadInfo[uiThreadInd].m_iBusy = 1;
 		/* ��������� ����� � ������ */
@@ -243,11 +239,9 @@ void *ThreadWorker (void *p_pvParam)
 		if (NULL == pcoDBConn)
 			continue;
 		/* ��������� ��������� ������ */
-		iFnRes = OperateSubscriber (psoThreadInfo->m_soSubscriberRefresh, psoThreadInfo->m_pcoIPConn, *pcoDBConn);
-		if (0 == iFnRes) {
-			/* ���� ������ ������� ���������� ������� �� �� ������� */
-			iFnRes = DeleteRefreshRecord (&psoThreadInfo->m_soSubscriberRefresh, *pcoDBConn);
-		}
+		OperateRefreshRecord (psoThreadInfo->m_soRefreshRecord, psoThreadInfo->m_pcoIPConn, *pcoDBConn);
+		/* ���� ������ ������� ���������� ������� �� �� ������� */
+		DeleteRefreshRecord (&psoThreadInfo->m_soRefreshRecord, *pcoDBConn);
 		/* ����������� ���������� � �� */
 		if (pcoDBConn) {
 			db_pool_release(pcoDBConn);

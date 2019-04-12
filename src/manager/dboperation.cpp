@@ -1,6 +1,7 @@
+#include <list>
+
 #include "utils/config/config.h"
 #include "utils/log/log.h"
-
 #include "coam.h"
 
 extern CConfig g_coConf;
@@ -60,7 +61,7 @@ int CreateNASList (std::map<std::string,std::string> *p_pmapNASList)
 	return iRetVal;
 }
 
-int CreateSubscriberList (std::vector<SSubscriberRefresh> *p_pvectRefresh)
+int loadRefreshQueue (std::vector<SRefreshRecord> *p_pvectRefresh)
 {
 	int iRetVal = 0;
 	otl_connect *pcoDBConn = NULL;
@@ -88,15 +89,16 @@ int CreateSubscriberList (std::vector<SSubscriberRefresh> *p_pvectRefresh)
 		}
 
 		try {
-			SSubscriberRefresh soSubscr;
+			SRefreshRecord soSubscr;
 			/* ������� ������ ������ � �� */
 			otl_stream coOTLStream (1000, strVal.c_str(), *pcoDBConn);
 			while (! coOTLStream.eof()) {
-				memset (&soSubscr, 0, sizeof(soSubscr));
 				coOTLStream
-					>> soSubscr.m_mcSubscriberId
-					>> soSubscr.m_mcRefreshDate
-					>> soSubscr.m_mcAction;
+					>> soSubscr.m_strRowId
+					>> soSubscr.m_strIdentifierType
+					>> soSubscr.m_strIdentifier
+					>> soSubscr.m_strAction
+					>> soSubscr.m_coDateTime;
 				p_pvectRefresh->push_back (soSubscr);
 			}
 		} catch (otl_exception &coOTLExc) {
@@ -113,63 +115,24 @@ int CreateSubscriberList (std::vector<SSubscriberRefresh> *p_pvectRefresh)
 	return iRetVal;
 }
 
-int OperateSessionInfo(
-	std::map<SSessionInfo, std::map<std::string, int> > *p_pmapSessList,
-	SSessionInfo &p_soSessInfo,
-	std::string &p_strServiceInfo)
-{
-	int iRetVal = 0;
-	int iFnRes;
-
-	do {
-		std::map<SSessionInfo, std::map<std::string, int> >::iterator iterSessInfo;
-
-		iFnRes = GetNASLocation(p_soSessInfo.m_strNASIPAddress, p_soSessInfo.m_strLocation);
-		/* ���� NAS �� ������ */
-		if (iFnRes) {
-			p_soSessInfo.m_strLocation = "DEFAULT";
-		}
-		ModifyName("sess_info_pref", p_soSessInfo.m_strLocation, p_strServiceInfo); /* it should be deprecated */
-		ModifyName("activeServiceName_modifier", p_soSessInfo.m_strLocation, p_strServiceInfo);
-		iterSessInfo = p_pmapSessList->find(p_soSessInfo);
-		if (iterSessInfo != p_pmapSessList->end()) {
-			iterSessInfo->second.insert(
-				std::make_pair(
-				p_strServiceInfo,
-				0));
-		} else {
-			std::map<std::string, int> mapTmp;
-			mapTmp.insert(
-				std::make_pair(
-				p_strServiceInfo,
-				0));
-			p_pmapSessList->insert(
-				std::make_pair(
-				p_soSessInfo,
-				mapTmp));
-		}
-	} while (0);
-
-	return iRetVal;
-}
-
 extern std::multimap<std::string, SSessionInfoFull> g_mmapSessionListFull;
 
 int CreateSessionList (
-	const char *p_pcszSubscriberID,
+	const std::string &p_strSubscriberID,
 	std::map<SSessionInfo,std::map<std::string,int> > *p_pmapSessList,
 	otl_connect &p_coDBConn)
 {
 	int iRetVal = 0;
 	const char *pszConfParam = "qr_session_list";
 	std::string strRequest;
+	std::list<SSessionInfoFull> listSessList;
 
 	do {
 		if (g_mmapSessionListFull.size() > 0) {
-			for (std::multimap<std::string, SSessionInfoFull>::iterator iterSessInfoFull = g_mmapSessionListFull.find(p_pcszSubscriberID);
-					iterSessInfoFull != g_mmapSessionListFull.end() && iterSessInfoFull->first == p_pcszSubscriberID;
+			for (std::multimap<std::string, SSessionInfoFull>::iterator iterSessInfoFull = g_mmapSessionListFull.find(p_strSubscriberID);
+					iterSessInfoFull != g_mmapSessionListFull.end() && iterSessInfoFull->first == p_strSubscriberID;
 					++iterSessInfoFull) {
-				OperateSessionInfo(p_pmapSessList, iterSessInfoFull->second.m_soSessInfo, iterSessInfoFull->second.m_strServiceInfo);
+				listSessList.push_back( iterSessInfoFull->second );
 			}
 		} else {
 			/* ����������� � ������� ����� ������� */
@@ -191,20 +154,26 @@ int CreateSessionList (
 				SSessionInfo soSessInfo;
 				otl_stream coOTLStream (1000, strRequest.c_str(), p_coDBConn);
 
-				coOTLStream << p_pcszSubscriberID;
+				coOTLStream << p_strSubscriberID;
 				while (! coOTLStream.eof()) {
 					coOTLStream
 						>> soSessInfo.m_strUserName
 						>> soSessInfo.m_strNASIPAddress
 						>> soSessInfo.m_strSessionId
 						>> strCiscoServiceInfo;
-					OperateSessionInfo(p_pmapSessList, soSessInfo, strCiscoServiceInfo);
+					{
+						SSessionInfoFull soSessInfoFull = { soSessInfo, strCiscoServiceInfo };
+						listSessList.push_back( soSessInfoFull );
+					}
 				}
 			} catch (otl_exception &coOTLExc) {
 				/* �� ����� ���������� ������� ��������� ������ */
 					UTL_LOG_E(g_coLog, "code: '%d'; description: '%s'; query: '%s';", coOTLExc.code, coOTLExc.msg, coOTLExc.stm_text);
 				iRetVal = coOTLExc.code;
 			}
+		}
+		for( std::list<SSessionInfoFull>::iterator iter = listSessList.begin(); iter != listSessList.end(); ++iter ) {
+			OperateSessionInfo( p_pmapSessList, iter->m_soSessInfo, &( iter->m_strServiceInfo ) );
 		}
 	} while (0);
 
@@ -214,7 +183,7 @@ int CreateSessionList (
 int CreateSessionListFull(std::multimap<std::string, SSessionInfoFull> &p_mmapSessList)
 {
 	int iRetVal = 0;
-	const char *pszConfParam = "qr_session_list_full";
+	const char *pszConfParam = "qr_session_list";
 	std::string strRequest;
 	otl_connect *pcoDBConn = NULL;
 	CTimeMeasurer coTM;
@@ -243,9 +212,12 @@ int CreateSessionListFull(std::multimap<std::string, SSessionInfoFull> &p_mmapSe
 		try {
 			std::string strSubscriberId;
 			otl_stream coOTLStream(
-				10000,
+				1000,
 				strRequest.c_str(),
 				*pcoDBConn);
+			otl_null coNULL;
+
+			coOTLStream << coNULL;
 
 			while (!coOTLStream.eof()) {
 				{
@@ -321,15 +293,12 @@ int CreatePolicyList (
 					soPolicyInfo.m_strLocation = "DEFAULT";
 				}
 				if (! Filter ("policy_filter", soPolicyInfo.m_strLocation, soPolicyDetail.m_strAttr)) { /* it should be deprecated */
-					UTL_LOG_N( g_coLog, "attribute was declined by policy_filter: location: %s; attr: %s", soPolicyInfo.m_strLocation.c_str(), soPolicyDetail.m_strAttr.c_str() );
 					continue;
 				}
 				if (! Filter ("policyAttr_filter", soPolicyInfo.m_strLocation, soPolicyDetail.m_strAttr)) {
-					UTL_LOG_N( g_coLog, "attribute was declined by policyAttr_filter: location: %s; attr: %s", soPolicyInfo.m_strLocation.c_str(), soPolicyDetail.m_strAttr.c_str() );
 					continue;
 				}
 				if( ! Filter( "policyName_filter", soPolicyInfo.m_strLocation, soPolicyDetail.m_strValue ) ) {
-					UTL_LOG_N( g_coLog, "attribute was declined by policyName_filter: location: %s; attr: %s", soPolicyInfo.m_strLocation.c_str(), soPolicyDetail.m_strValue.c_str() );
 					continue;
 				}
 				ModifyName ("policy_pref", soPolicyInfo.m_strLocation, soPolicyDetail.m_strValue); /* it should be deprecated */
@@ -364,7 +333,7 @@ int CreatePolicyList (
 }
 
 int DeleteRefreshRecord (
-	const SSubscriberRefresh *p_pcsoSubscr,
+	const SRefreshRecord *p_pcsoSubscr,
 	otl_connect &p_coDBConn)
 {
 	int iRetVal = 0;
@@ -388,8 +357,8 @@ int DeleteRefreshRecord (
 		try {
 			otl_stream coOTLStream (1, strRequest.c_str(), p_coDBConn);
 			coOTLStream
-				<< p_pcsoSubscr->m_mcSubscriberId
-				<< p_pcsoSubscr->m_mcRefreshDate;
+				<< p_pcsoSubscr->m_strRowId
+				<< p_pcsoSubscr->m_strIdentifier;
 			coOTLStream.flush ();
 			p_coDBConn.commit();
 		} catch (otl_exception &coOTLExc) {

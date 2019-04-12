@@ -197,7 +197,8 @@ int main(int argc, char *argv[])
 	 *	what to do, so we might as well do the default, and die.
 	 */
 	soSigAct.sa_handler = sig_handler;
-	sigaction (SIGTERM, &soSigAct, NULL);
+	sigaction( SIGTERM, &soSigAct, NULL );
+	sigaction( SIGINT, &soSigAct, NULL );
 
 	do {
 		if (InitCoAManager ()) {
