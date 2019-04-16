@@ -150,6 +150,7 @@ int CreateSessionList (
 			}
 
 			try {
+				std::string strSubscriberId;
 				std::string strCiscoServiceInfo;
 				SSessionInfo soSessInfo;
 				otl_stream coOTLStream (1000, strRequest.c_str(), p_coDBConn);
@@ -157,11 +158,13 @@ int CreateSessionList (
 				coOTLStream << p_strSubscriberID;
 				while (! coOTLStream.eof()) {
 					coOTLStream
+						>> strSubscriberId /* в данном контексте это значение не нужно, используется для универсализации запроса */
 						>> soSessInfo.m_strUserName
 						>> soSessInfo.m_strNASIPAddress
 						>> soSessInfo.m_strSessionId
 						>> strCiscoServiceInfo;
 					{
+						/* значение strSubscriberId должно свпадать со значением p_strSubscriberID, но мы не проверяем... */
 						SSessionInfoFull soSessInfoFull = { soSessInfo, strCiscoServiceInfo };
 						listSessList.push_back( soSessInfoFull );
 					}

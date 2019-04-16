@@ -100,12 +100,17 @@ int OperateSubscriberSession (
 	std::map<std::string,int> &p_soSessionPolicyList,
 	std::map<SPolicyInfo,std::map<SPolicyDetail,int> > &p_mapProfilePolicyList,
 	CIPConnector &p_coIPConn,
-	otl_connect &p_coDBConn);
-int DeactivateNotrelevantPolicy (const SSessionInfo &p_soSessionInfo, std::map<std::string,int> &p_soSessionPolicyList, CIPConnector &p_coIPConn);
-int ActivateInactivePolicy (
+	otl_connect &p_coDBConn,
+	std::string &p_strWhatWasDone );
+int DeactivateNotrelevantPolicy( const SSessionInfo &p_soSessionInfo,
+								 std::map<std::string, int> &p_soSessionPolicyList,
+								 CIPConnector &p_coIPConn,
+								 std::string &p_strWhatWasDone );
+int ActivateInactivePolicy(
 	const SSessionInfo &p_soSessionInfo,
-	std::map<SPolicyDetail,int> &p_mapPolicyDetail,
-	CIPConnector &p_coIPConn);
+	std::map<SPolicyDetail, int> &p_mapPolicyDetail,
+	CIPConnector &p_coIPConn,
+	std::string &p_strWhatWasDone );
 /* выборка из БД списка активных сессий подписчика */
 int CreateSessionList(const std::string &p_strSubscriberID, std::map<SSessionInfo, std::map<std::string, int> > *p_pmapSessList, otl_connect &p_coDBConn);
 int CreateSessionListFull(std::multimap<std::string,SSessionInfoFull> &p_mmapSessList);
@@ -114,17 +119,18 @@ int ModifyName (const char *p_pszModifyRule, std::string &p_strLocation, std::st
 bool Filter (const char *p_pszFilterName, std::string &p_strLocation, std::string &p_strValue);
 int SelectActualPolicy (std::map<std::string,int> *p_pmapSessionDetail, std::map<SPolicyDetail,int> *p_pmapPolicyDetail);
 int SetCommonCoASensorAttr (SPSRequest *p_psoRequest, size_t p_stBufSize, const SSessionInfo *p_pcsoSessionInfo, CConfig *p_pcoConf, CIPConnector *p_pcoIPConn);
-int DeActivateService (
+int DeActivateService( const SSessionInfo *p_pcsoSessInfo,
+					   const char *p_pcszServiceInfo,
+					   const char *p_pcszAttr,
+					   CIPConnector *p_pcoIPConn,
+					   std::string &p_strWhatWasDone );
+int ActivateService(
 	const SSessionInfo *p_pcsoSessInfo,
 	const char *p_pcszServiceInfo,
 	const char *p_pcszAttr,
-	CIPConnector *p_pcoIPConn);
-int ActivateService (
-	const SSessionInfo *p_pcsoSessInfo,
-	const char *p_pcszServiceInfo,
-	const char *p_pcszAttr,
-	CIPConnector *p_pcoIPConn);
-int AccountLogoff( const SSessionInfo &p_soSessInfo, CIPConnector *p_pcoIPConn );
+	CIPConnector *p_pcoIPConn,
+	std::string &p_strWhatWasDone );
+int AccountLogoff( const SSessionInfo &p_soSessInfo, CIPConnector *p_pcoIPConn, std::string &p_strWhatWasDone );
 int CheckSession (const SSessionInfo *p_pcsoSessInfo, CIPConnector *p_pcoIPConn, otl_connect &p_coDBConn);
 int FixStuckSession (const SSessionInfo *p_pcsoSessInfo, otl_connect &p_coDBConn, bool p_bOpt = false);
 int ParsePSPack (const SPSRequest *p_pcsoResp, size_t p_stRespLen, int p_iFindResult = 1);
