@@ -293,7 +293,7 @@ int MainWork ()
 		}
 		/* обходим список абонентов */
 		if( 10 <= vectSubscriberList.size() ) {
-			UTL_LOG_N( g_coLog, "processing loop was started: queue length: '%u'", vectSubscriberList.size() );
+			UTL_LOG_N( g_coLog, "processing loop is started: queue length: '%u'", vectSubscriberList.size() );
 		}
 		iterSubscr = vectSubscriberList.begin();
 		while (iterSubscr != vectSubscriberList.end()) {
@@ -1214,7 +1214,7 @@ int AccountLogoff( const SSessionInfo &p_soSessInfo, CIPConnector *p_pcoIPConn, 
 	switch( iRetVal ) {
 		case 0:
 		case -45:
-			iFnRes = asprintf( &pszMsg, "\r\n\t\tuser is disconnected; result code: '%d'", iRetVal );
+			iFnRes = asprintf( &pszMsg, "\r\n\t\tuser was disconnected; result code: '%d'", iRetVal );
 			if( 0 < iFnRes ) {
 				p_strWhatWasDone.append( pszMsg );
 				free( pszMsg );

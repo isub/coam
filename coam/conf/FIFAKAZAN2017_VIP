@@ -1,6 +1,5 @@
 sess_info_pref=N
 policy_pref=A
-policy_pref=N
 policy_filter=Cisco-Account-Info
 
 activation=ServiceActivate

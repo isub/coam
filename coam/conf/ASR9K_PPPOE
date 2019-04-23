@@ -1,12 +1,12 @@
 sess_info_pref=
-activeServiceName_modifier=
+#activeServiceName_modifier=
 
-policy_filter=
-policyAttr_filter=Cisco-AVPair
-policyName_filter=sa=
-policyName_filter=subscriber:sa=
-policyName_modifier=sa=
-policyName_modifier=subscriber:sa=
+policy_filter=Cisco-AVPair
+#policyAttr_filter=Cisco-AVPair
+#policyName_filter=sa=
+#policyName_filter=subscriber:sa=
+#policyName_modifier=sa=
+#policyName_modifier=subscriber:sa=
 
 activation=BNG-Service-Activate
 deactivation=BNG-Service-Deactivate
