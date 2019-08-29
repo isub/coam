@@ -417,7 +417,6 @@ int FixStuckSession (
 		try {
 			otl_stream coOTLStream (1, strRequest.c_str(), p_coDBConn);
 			coOTLStream
-				<< p_pcsoSessInfo->m_strUserName
 				<< p_pcsoSessInfo->m_strNASIPAddress
 				<< p_pcsoSessInfo->m_strSessionId;
 			coOTLStream.flush ();
