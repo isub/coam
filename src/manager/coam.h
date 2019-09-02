@@ -13,6 +13,8 @@
 #define ACTION_TYPE_CHECK_SESS		"checksession"
 #define ACTION_TYPE_CHECK_POLICY	"checkpolicy"
 
+#define RESULT_SESSION_FIXED	1
+
 struct SMainConfig {
 	char	*m_pszPidFile;
 	int		m_iDCD;			/* Debug Call Depth */
@@ -94,14 +96,15 @@ int OperateRefreshRecord (const SRefreshRecord &p_soRefreshRecord, CIPConnector 
 int OperateSessionInfo( std::map<SSessionInfo, std::map<std::string, int> > *p_pmapSessList, SSessionInfo &p_soSessInfo, std::string *p_pstrServiceInfo );
 
 /* обработка сессии подписчика */
-int OperateSubscriberSession (
+int OperateSubscriberSession(
 	const SRefreshRecord &p_soRefreshRecord,
 	const SSessionInfo &p_soSessionInfo,
-	std::map<std::string,int> &p_soSessionPolicyList,
-	std::map<SPolicyInfo,std::map<SPolicyDetail,int> > &p_mapProfilePolicyList,
+	std::map<std::string, int> &p_soSessionPolicyList,
+	std::map<SPolicyInfo, std::map<SPolicyDetail, int> > &p_mapProfilePolicyList,
 	CIPConnector &p_coIPConn,
 	otl_connect &p_coDBConn,
-	std::string &p_strWhatWasDone );
+	std::string &p_strWhatWasDone,
+	bool &p_bWriteLog );
 int DeactivateNotrelevantPolicy( const SSessionInfo &p_soSessionInfo,
 								 std::map<std::string, int> &p_soSessionPolicyList,
 								 CIPConnector &p_coIPConn,
@@ -131,7 +134,7 @@ int ActivateService(
 	CIPConnector *p_pcoIPConn,
 	std::string &p_strWhatWasDone );
 int AccountLogoff( const SSessionInfo &p_soSessInfo, CIPConnector *p_pcoIPConn, std::string &p_strWhatWasDone );
-int CheckSession (const SSessionInfo *p_pcsoSessInfo, CIPConnector *p_pcoIPConn, otl_connect &p_coDBConn);
+int CheckSession( const SSessionInfo *p_pcsoSessInfo, CIPConnector *p_pcoIPConn, otl_connect &p_coDBConn, std::string &p_strWhatWasDone );
 int FixStuckSession (const SSessionInfo *p_pcsoSessInfo, otl_connect &p_coDBConn, bool p_bOpt = false);
 int ParsePSPack (const SPSRequest *p_pcsoResp, size_t p_stRespLen, int p_iFindResult = 1);
 int DeleteRefreshRecord (const SRefreshRecord *p_pcsoSubscr, otl_connect &p_coDBConn);

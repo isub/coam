@@ -426,6 +426,7 @@ int OperateRefreshRecord (
 	std::map<SSessionInfo,std::map<std::string,int> > mapSessionList; /* список сессий подписчика */
 	std::map<SSessionInfo,std::map<std::string,int> >::iterator iterSession; /* итератор списка сессий подписчика */
 	std::string strWhatWasDone;
+	bool bWriteLog = false;
 
 	UTL_LOG_D( g_coLog,
 			   "identifier type: '%s'; identifier: '%s'; action: '%s'",
@@ -464,16 +465,18 @@ int OperateRefreshRecord (
 
 		// обходим все сессии абонента
 		while( iterSession != mapSessionList.end() ) {
-			OperateSubscriberSession( p_soRefreshRecord, iterSession->first, iterSession->second, mapPolicyList, *p_pcoIPConn, p_coDBConn, strWhatWasDone );
+			OperateSubscriberSession( p_soRefreshRecord, iterSession->first, iterSession->second, mapPolicyList, *p_pcoIPConn, p_coDBConn, strWhatWasDone, bWriteLog );
 			++iterSession;
 		}
 	} while (0);
 
-	char mcTimeDiff[32];
-	coTM.GetDifference (NULL, mcTimeDiff, sizeof(mcTimeDiff));
-	UTL_LOG_N( g_coLog,
-			   "identifier type: '%s'; identifier: '%s'; action: '%s': operated in '%s'%s",
-			   p_soRefreshRecord.m_strIdentifierType.c_str(), p_soRefreshRecord.m_strIdentifier.c_str(), p_soRefreshRecord.m_strAction.c_str(), mcTimeDiff, strWhatWasDone.c_str() );
+	if( bWriteLog ) {
+		char mcTimeDiff[32];
+		coTM.GetDifference (NULL, mcTimeDiff, sizeof(mcTimeDiff));
+		UTL_LOG_N( g_coLog,
+				   "identifier type: '%s'; identifier: '%s'; action: '%s': operated in '%s'%s",
+				   p_soRefreshRecord.m_strIdentifierType.c_str(), p_soRefreshRecord.m_strIdentifier.c_str(), p_soRefreshRecord.m_strAction.c_str(), mcTimeDiff, strWhatWasDone.c_str() );
+	}
 
 	return iRetVal;
 }
@@ -485,7 +488,8 @@ int OperateSubscriberSession(
 	std::map<SPolicyInfo, std::map<SPolicyDetail, int> > &p_mapProfilePolicyList,
 	CIPConnector &p_coIPConn,
 	otl_connect &p_coDBConn,
-	std::string &p_strWhatWasDone )
+	std::string &p_strWhatWasDone,
+	bool &p_bWriteLog )
 {
 	int iRetVal = 0;
 
@@ -509,14 +513,18 @@ int OperateSubscriberSession(
 		if( 0 == p_soRefreshRecord.m_strAction.compare( ACTION_TYPE_LOGOFF ) ) {
 			/* отрабатываем команду 'logoff' */
 			iRetVal = AccountLogoff( p_soSessionInfo, &p_coIPConn, p_strWhatWasDone );
+			p_bWriteLog = true;
 			if( 0 == iRetVal ) {
 			} else {
 				break;
 			}
 		} else if( 0 == p_soRefreshRecord.m_strAction.compare( ACTION_TYPE_CHECK_SESS ) ) {
 			/* отрабатываем команду 'checksession' */
-			iRetVal = CheckSession( &( p_soSessionInfo ), &p_coIPConn, p_coDBConn );
-			if( iRetVal ) {
+			iRetVal = CheckSession( &( p_soSessionInfo ), &p_coIPConn, p_coDBConn, p_strWhatWasDone );
+			if( 0 == iRetVal ) {
+			} else if( RESULT_SESSION_FIXED == iRetVal ) {
+				p_bWriteLog = true;
+			} else {
 				break;
 			}
 		} else if( 0 == p_soRefreshRecord.m_strAction.compare( ACTION_TYPE_CHECK_POLICY ) || 0 == p_soRefreshRecord.m_strAction.length() ) {
@@ -526,6 +534,7 @@ int OperateSubscriberSession(
 				if( 0 < iFnRes ) {
 					p_strWhatWasDone.append( pszMsg );
 					free( pszMsg );
+					p_bWriteLog = true;
 				}
 				iRetVal = EINVAL;
 				break;
@@ -550,6 +559,7 @@ int OperateSubscriberSession(
 					if( 0 < iFnRes ) {
 						p_strWhatWasDone.append( pszMsg );
 						free( pszMsg );
+						p_bWriteLog = true;
 					}
 					break;
 				}
@@ -566,6 +576,7 @@ int OperateSubscriberSession(
 			if( iterProfilePolicy == p_mapProfilePolicyList.end() && iterProfilePolicyDef == p_mapProfilePolicyList.end() ) {
 				// политики не найдены, посылаем LogOff
 				iRetVal = AccountLogoff( p_soSessionInfo, &p_coIPConn, p_strWhatWasDone );
+				p_bWriteLog = true;
 				if( iRetVal ) {
 					break;
 				}
@@ -579,18 +590,21 @@ int OperateSubscriberSession(
 				}
 				/* отключаем активные неактуальные политики */
 				iRetVal = DeactivateNotrelevantPolicy( p_soSessionInfo, p_soSessionPolicyList, p_coIPConn, p_strWhatWasDone );
+				p_bWriteLog = true;
 				if( iRetVal ) {
 					break;
 				}
 				/* включаем неактивные актуальные политики */
 				if( iterProfilePolicy != p_mapProfilePolicyList.end() ) {
 					iRetVal = ActivateInactivePolicy( p_soSessionInfo, iterProfilePolicy->second, p_coIPConn, p_strWhatWasDone );
+					p_bWriteLog = true;
 					if( iRetVal ) {
 						break;
 					}
 				}
 				if( iterProfilePolicyDef != p_mapProfilePolicyList.end() ) {
 					iRetVal = ActivateInactivePolicy( p_soSessionInfo, iterProfilePolicyDef->second, p_coIPConn, p_strWhatWasDone );
+					p_bWriteLog = true;
 					if( iRetVal ) {
 						break;
 					}
@@ -605,6 +619,7 @@ int OperateSubscriberSession(
 			if( 0 < iFnRes ) {
 				p_strWhatWasDone.append( pszMsg );
 				free( pszMsg );
+				p_bWriteLog = true;
 			}
 			iRetVal = -1;
 		}
@@ -1231,7 +1246,8 @@ int AccountLogoff( const SSessionInfo &p_soSessInfo, CIPConnector *p_pcoIPConn, 
 int CheckSession (
 	const SSessionInfo *p_pcsoSessInfo,
 	CIPConnector *p_pcoIPConn,
-	otl_connect &p_coDBConn)
+	otl_connect &p_coDBConn,
+	std::string &p_strWhatWasDone )
 {
 	int iRetVal = 0;
 	int iFnRes;
@@ -1240,6 +1256,7 @@ int CheckSession (
 	SPSRequest *psoReq;
 	__uint16_t ui16PackLen;
 	__uint16_t ui16AttrLen;
+	char *pszMsg;
 
 	do {
 		psoReq = (SPSRequest*)mcPack;
@@ -1250,7 +1267,11 @@ int CheckSession (
 		CConfig *pcoLocConf;
 		// если конфигурация локации не найдена
 		if (iterLocConf == g_mapLocationConf.end()) {
-			UTL_LOG_E(g_coLog, "Location '%s' configuration not found", p_pcsoSessInfo->m_strLocation.c_str());
+			iFnRes = asprintf( &pszMsg, "\r\n\t\tLocation configuration not found" );
+			if( 0 < iFnRes ) {
+				p_strWhatWasDone.append( pszMsg );
+				free( pszMsg );
+			}
 			iRetVal = -1;
 			break;
 		}
@@ -1268,18 +1289,30 @@ int CheckSession (
 		iRetVal = p_pcoIPConn->Send (mcPack, ui16PackLen);
 		if (iRetVal) {
 			iRetVal = errno;
-			UTL_LOG_E(g_coLog, "error occurred while processing 'p_pcoIPConn->Send'. error code: '%d'", iRetVal);
+			iFnRes = asprintf( &pszMsg, "\r\n\t\terror occurred while processing 'p_pcoIPConn->Send'. error code: '%d'", iRetVal );
+			if( 0 < iFnRes ) {
+				p_strWhatWasDone.append( pszMsg );
+				free( pszMsg );
+			}
 			break;
 		}
 
 		iRetVal = p_pcoIPConn->Recv (mcPack, sizeof(mcPack));
 		if (0 == iRetVal) {
 			iRetVal = -1;
-			UTL_LOG_E(g_coLog, "connection is closed");
+			iFnRes = asprintf( &pszMsg, "\r\n\t\tconnection is closed" );
+			if( 0 < iFnRes ) {
+				p_strWhatWasDone.append( pszMsg );
+				free( pszMsg );
+			}
 			break;
 		}
 		if (0 > iRetVal) {
-			UTL_LOG_E(g_coLog, "error occurred while processing 'p_pcoIPConn->Recv'. error code: '%d'", iRetVal);
+			iFnRes = asprintf( &pszMsg, "\r\n\t\terror occurred while processing 'p_pcoIPConn->Recv'. error code: '%d'", iRetVal );
+			if( 0 < iFnRes ) {
+				p_strWhatWasDone.append( pszMsg );
+				free( pszMsg );
+			}
 			break;
 		}
 		iRetVal = ParsePSPack ((SPSRequest*)mcPack, iRetVal);
@@ -1298,29 +1331,28 @@ int CheckSession (
 				iRetVal = -1;
 				break;
 			}
-			UTL_LOG_N(
-				g_coLog,
-				"UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s'; user session fixed",
-				p_pcsoSessInfo->m_strUserName.c_str(),
-				p_pcsoSessInfo->m_strNASIPAddress.c_str(),
-				p_pcsoSessInfo->m_strSessionId.c_str());
+			iFnRes = asprintf( &pszMsg, "\r\n\t\tuser session fixed" );
+			if( 0 < iFnRes ) {
+				p_strWhatWasDone.append( pszMsg );
+				free( pszMsg );
+			}
+			iRetVal = RESULT_SESSION_FIXED;
 			break;
 		case 0:
-			UTL_LOG_N(
-				g_coLog,
-				"UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s'; user session is active - nothing to do",
-				p_pcsoSessInfo->m_strUserName.c_str(),
-				p_pcsoSessInfo->m_strNASIPAddress.c_str(),
-				p_pcsoSessInfo->m_strSessionId.c_str());
+		#ifdef DEBUG
+			iFnRes = asprintf( &pszMsg, "\r\n\t\tuser session is active - nothing to do" );
+			if( 0 < iFnRes ) {
+				p_strWhatWasDone.append( pszMsg );
+				free( pszMsg );
+			}
+		#endif
 			break;
 		default:
-			UTL_LOG_E(
-				g_coLog,
-				"UserName: '%s'; NASIPAddress: '%s'; SessionID: '%s': error code: '%d'",
-				p_pcsoSessInfo->m_strUserName.c_str(),
-				p_pcsoSessInfo->m_strNASIPAddress.c_str(),
-				p_pcsoSessInfo->m_strSessionId.c_str(),
-				iRetVal);
+			iFnRes = asprintf( &pszMsg, "\r\n\t\terror code: '%d'", p_pcsoSessInfo->m_strSessionId.c_str(), iRetVal );
+			if( 0 < iFnRes ) {
+				p_strWhatWasDone.append( pszMsg );
+				free( pszMsg );
+			}
 			break;
 		}
 	} while (0);
