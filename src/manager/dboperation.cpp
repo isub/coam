@@ -376,7 +376,7 @@ int DeleteRefreshRecord (
 }
 
 int FixStuckSession (
-	const SSessionInfo *p_pcsoSessInfo,
+	const SSessionInfo &p_soSessInfo,
 	otl_connect &p_coDBConn,
 	bool p_bOpt)
 {
@@ -384,41 +384,44 @@ int FixStuckSession (
 	const char *pszConfParam;
 	std::string strRequest;
 
-	if (p_bOpt) {
-		pszConfParam = "qr_fix_stuck_session_opt";
-	} else {
+	if( ! p_bOpt ) {
 		pszConfParam = "qr_fix_stuck_session";
+	} else {
+		pszConfParam = "qr_fix_stuck_session_opt";
 	}
 
 	do {
 		/* ����������� � ������� ����� ������� */
 		iRetVal = g_coConf.GetParamValue (pszConfParam, strRequest);
-		if (iRetVal) {
+		if( 0 == iRetVal ) {
+		} else {
 			/* ������������ ������ �� ����������� ������ ���� ������ � ������� */
-			if (p_bOpt) {
+			if( p_bOpt ) {
 				iRetVal = 0;
-				break;
+			} else {
+				UTL_LOG_E( g_coLog, "config parameter '%s' not found", pszConfParam );
+				iRetVal = EINVAL;
 			}
-			UTL_LOG_E(g_coLog, "config parameter '%s' not found", pszConfParam);
 			break;
 		}
 		/* ���� ����� ������� ������ */
-		if (0 == strRequest.length()) {
+		if( 0 != strRequest.length() ) {
+		} else {
 			/* ������������ ������ �� ����������� ������ ���� ������ � ������� */
-			if (p_bOpt) {
+			if( p_bOpt ) {
 				iRetVal = 0;
-				break;
+			} else {
+				UTL_LOG_E( g_coLog, "config parameter '%s' not defined", pszConfParam );
+				iRetVal = EINVAL;
 			}
-			UTL_LOG_E(g_coLog, "config parameter '%s' not defined", pszConfParam);
-			iRetVal = -1;
 			break;
 		}
 
 		try {
 			otl_stream coOTLStream (1, strRequest.c_str(), p_coDBConn);
 			coOTLStream
-				<< p_pcsoSessInfo->m_strNASIPAddress
-				<< p_pcsoSessInfo->m_strSessionId;
+				<< p_soSessInfo.m_strNASIPAddress
+				<< p_soSessInfo.m_strSessionId;
 			coOTLStream.flush ();
 			p_coDBConn.commit();
 		} catch (otl_exception &coOTLExc) {

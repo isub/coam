@@ -13,7 +13,9 @@
 #define ACTION_TYPE_CHECK_SESS		"checksession"
 #define ACTION_TYPE_CHECK_POLICY	"checkpolicy"
 
-#define RESULT_SESSION_FIXED	1
+#define RESULT_SESSION_FIXED	(32768)
+
+#define LOG_MIN_QUEUE_SIZE	100
 
 struct SMainConfig {
 	char	*m_pszPidFile;
@@ -121,20 +123,20 @@ int CreatePolicyList (const SSessionInfo *p_pcsoSessInfo, std::map<SPolicyInfo,s
 int ModifyName (const char *p_pszModifyRule, std::string &p_strLocation, std::string &p_strValue);
 bool Filter (const char *p_pszFilterName, std::string &p_strLocation, std::string &p_strValue);
 int SelectActualPolicy (std::map<std::string,int> *p_pmapSessionDetail, std::map<SPolicyDetail,int> *p_pmapPolicyDetail);
-int SetCommonCoASensorAttr (SPSRequest *p_psoRequest, size_t p_stBufSize, const SSessionInfo *p_pcsoSessionInfo, CConfig *p_pcoConf, CIPConnector *p_pcoIPConn);
-int DeActivateService( const SSessionInfo *p_pcsoSessInfo,
+int SetCommonCoASensorAttr (SPSRequest *p_psoRequest, size_t p_stBufSize, const SSessionInfo &p_soSessionInfo, CConfig *p_pcoConf, CIPConnector *p_pcoIPConn);
+int DeActivateService( const SSessionInfo &p_soSessInfo,
 					   const char *p_pcszServiceInfo,
 					   const char *p_pcszAttr,
 					   CIPConnector *p_pcoIPConn,
 					   std::string &p_strWhatWasDone );
 int ActivateService(
-	const SSessionInfo *p_pcsoSessInfo,
+	const SSessionInfo &p_soSessInfo,
 	const char *p_pcszServiceInfo,
 	const char *p_pcszAttr,
 	CIPConnector *p_pcoIPConn,
 	std::string &p_strWhatWasDone );
 int AccountLogoff( const SSessionInfo &p_soSessInfo, CIPConnector *p_pcoIPConn, std::string &p_strWhatWasDone );
-int CheckSession( const SSessionInfo *p_pcsoSessInfo, CIPConnector *p_pcoIPConn, otl_connect &p_coDBConn, std::string &p_strWhatWasDone );
-int FixStuckSession (const SSessionInfo *p_pcsoSessInfo, otl_connect &p_coDBConn, bool p_bOpt = false);
+int CheckSession( const SSessionInfo &p_soSessInfo, CIPConnector *p_pcoIPConn, otl_connect &p_coDBConn, std::string &p_strWhatWasDone );
+int FixStuckSession (const SSessionInfo &p_soSessInfo, otl_connect &p_coDBConn, bool p_bOpt = false);
 int ParsePSPack (const SPSRequest *p_pcsoResp, size_t p_stRespLen, int p_iFindResult = 1);
 int DeleteRefreshRecord (const SRefreshRecord *p_pcsoSubscr, otl_connect &p_coDBConn);
