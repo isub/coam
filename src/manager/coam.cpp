@@ -1203,7 +1203,15 @@ int AccountLogoff( const SSessionInfo &p_soSessInfo, CIPConnector *p_pcoIPConn, 
 		case 0:
 		case -45:
 			p_strWhatWasDone.append( "\r\n\t\tuser was disconnected; result code: " );
-			p_strWhatWasDone.append( std::to_string( static_cast< long long int > ( iRetVal ) ) );
+			#if __cplusplus <= 199711L
+				{
+					char mcInt[ 32 ];
+					sprintf( mcInt, "%d", iRetVal );
+					p_strWhatWasDone.append( mcInt );
+				}
+			#else
+				p_strWhatWasDone.append( std::to_string( static_cast< long long int > ( iRetVal ) ) );
+			#endif
 			iRetVal = 0;
 			break;
 		default:

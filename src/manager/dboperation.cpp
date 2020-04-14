@@ -1,4 +1,5 @@
 #include <list>
+#include <errno.h>
 
 #include "utils/config/config.h"
 #include "utils/log/log.h"
