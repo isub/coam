@@ -19,6 +19,7 @@
 #endif
 
 #include "utils/coacommon.h"
+#include "utils/ps_common.h"
 #include "utils/config/config.h"
 #include "utils/log/log.h"
 #include "utils/pspacket/pspacket.h"
@@ -415,6 +416,39 @@ int parseSessionIdIdentifier( const std::string &p_strIdentifier, std::string &p
 	return iRetVal;
 }
 
+int parseUNameFrIPAddrNAS( const std::string & p_strIdent, SSessionInfo & p_soSessInfo, std::string & p_strFramedIPAddress )
+{
+	std::string::size_type stStart = 0;
+	std::string::size_type stSeparator;
+
+	/* search for userName */
+	stSeparator = p_strIdent.find( "\t", stStart );
+	if( stSeparator != std::string::npos ) {
+		p_soSessInfo.m_strUserName.assign( p_strIdent.substr( stStart, stSeparator ) );
+	} else {
+		return EINVAL;
+	}
+
+	/* search for framedIPAddress */
+	stStart = stSeparator + 1;
+	stSeparator = p_strIdent.find( "\t", stStart );
+	if( stSeparator != std::string::npos ) {
+		p_strFramedIPAddress.assign( p_strIdent.substr( stStart, stSeparator - stStart ) );
+	} else {
+		return EINVAL;
+	}
+
+	/* search for NASIPAddress */
+	stStart = stSeparator + 1;
+	if( stStart < p_strIdent.length() ) {
+		p_soSessInfo.m_strNASIPAddress.assign( p_strIdent.substr( stStart ) );
+	} else {
+		return EINVAL;
+	}
+
+	return 0;
+}
+
 int OperateRefreshRecord (
 	const SRefreshRecord &p_soRefreshRecord,
 	CIPConnector *p_pcoIPConn,
@@ -433,7 +467,42 @@ int OperateRefreshRecord (
 			   p_soRefreshRecord.m_strIdentifierType.c_str(), p_soRefreshRecord.m_strIdentifier.c_str(), p_soRefreshRecord.m_strAction.c_str() );
 
 	do {
-		if( 0 == p_soRefreshRecord.m_strIdentifierType.compare( ID_TYPE_SESSION_ID ) ) {
+		if( 0 == p_soRefreshRecord.m_strIdentifierType.compare( ID_TYPE_UNAME_FIPA_NAS ) ) {
+			/* тип идентификатора userName | framedIPAddress | NAS */
+
+			SSessionInfo soSessInfo;
+			std::string strFramedIPAddress;
+
+			bWriteLog = true;
+
+			if( 0 == p_soRefreshRecord.m_strAction.compare( ACTION_TYPE_REAUTHORIZE ) ) {
+				if( 0 == parseUNameFrIPAddrNAS( p_soRefreshRecord.m_strIdentifier, soSessInfo, strFramedIPAddress ) ) {
+				} else {
+					strWhatWasDone += "error: expected format is '<userName>\t<framedIPAddress>\t<NASIPAddress>' but it has got '";
+					strWhatWasDone += p_soRefreshRecord.m_strIdentifier;
+					strWhatWasDone += "'";
+					iRetVal = EINVAL;
+					break;
+				}
+
+				/* отрабатываем команду 'reauth' */
+				iRetVal = ReAuthorize( soSessInfo, strFramedIPAddress, p_pcoIPConn, strWhatWasDone );
+				if( 0 == iRetVal ) {
+				} else {
+					break;
+				}
+			} else {
+				strWhatWasDone += "action '";
+				strWhatWasDone += ( 0 != p_soRefreshRecord.m_strAction.length() ) ? p_soRefreshRecord.m_strAction : "default";
+				strWhatWasDone += "' is not supported with '";
+				strWhatWasDone += ( 0 != p_soRefreshRecord.m_strIdentifierType.length() ) ? p_soRefreshRecord.m_strIdentifierType : "default";
+				strWhatWasDone += "' id type";
+				iRetVal = EINVAL;
+				break;
+			}
+			/* operation completed */
+			break;
+		} else if( 0 == p_soRefreshRecord.m_strIdentifierType.compare( ID_TYPE_SESSION_ID ) ) {
 			/* тип идентификатора Session-Id */
 			SSessionInfo soSessInfo;
 
@@ -888,26 +957,30 @@ int SetCommonCoASensorAttr (SPSRequest *p_psoRequest, size_t p_stBufSize, const 
 		coPSPack.AddAttr (p_psoRequest, p_stBufSize, PS_NASIP, p_soSessionInfo.m_strNASIPAddress.data(), ui16ValueLen, 0);
 
 		// добавляем атрибут PS_SESSID
-		ui16ValueLen = p_soSessionInfo.m_strSessionId.length();
-		coPSPack.AddAttr (p_psoRequest, p_stBufSize, PS_SESSID, p_soSessionInfo.m_strSessionId.data(), ui16ValueLen, 0);
+		if( 0 != p_soSessionInfo.m_strSessionId.length() ) {
+			ui16ValueLen = p_soSessionInfo.m_strSessionId.length();
+			coPSPack.AddAttr (p_psoRequest, p_stBufSize, PS_SESSID, p_soSessionInfo.m_strSessionId.data(), ui16ValueLen, 0);
+		}
 
 		// дополнительные параметры запроса
-		std::vector<std::string> vectParamVal;
-		std::vector<std::string>::iterator iterValList;
-		char mcAdditAttr[0x1000], *pszVal;
-		__uint16_t ui16AttrType;
-		p_pcoConf->GetParamValue ("additional_req_attr", vectParamVal);
-		for (iterValList = vectParamVal.begin(); iterValList != vectParamVal.end(); ++iterValList) {
-			strncpy (mcAdditAttr, iterValList->c_str(), sizeof(mcAdditAttr));
-			pszVal = strstr (mcAdditAttr, "=");
-			if (NULL == pszVal) {
-				continue;
+		if( NULL != p_pcoConf ) {
+			std::vector<std::string> vectParamVal;
+			std::vector<std::string>::iterator iterValList;
+			char mcAdditAttr[0x1000], *pszVal;
+			__uint16_t ui16AttrType;
+			p_pcoConf->GetParamValue ("additional_req_attr", vectParamVal);
+			for (iterValList = vectParamVal.begin(); iterValList != vectParamVal.end(); ++iterValList) {
+				strncpy (mcAdditAttr, iterValList->c_str(), sizeof(mcAdditAttr));
+				pszVal = strstr (mcAdditAttr, "=");
+				if (NULL == pszVal) {
+					continue;
+				}
+				*pszVal = '\0';
+				++pszVal;
+				ui16AttrType = strtol (mcAdditAttr, NULL, 0);
+				ui16ValueLen = strlen (pszVal);
+				coPSPack.AddAttr (p_psoRequest, p_stBufSize, ui16AttrType, pszVal, ui16ValueLen, 0);
 			}
-			*pszVal = '\0';
-			++pszVal;
-			ui16AttrType = strtol (mcAdditAttr, NULL, 0);
-			ui16ValueLen = strlen (pszVal);
-			coPSPack.AddAttr (p_psoRequest, p_stBufSize, ui16AttrType, pszVal, ui16ValueLen, 0);
 		}
 
 	} while (0);
@@ -1203,6 +1276,93 @@ int AccountLogoff( const SSessionInfo &p_soSessInfo, CIPConnector *p_pcoIPConn, 
 		case 0:
 		case -45:
 			p_strWhatWasDone.append( "\r\n\t\tuser was disconnected; result code: " );
+			#if __cplusplus <= 199711L
+				{
+					char mcInt[ 32 ];
+					sprintf( mcInt, "%d", iRetVal );
+					p_strWhatWasDone.append( mcInt );
+				}
+			#else
+				p_strWhatWasDone.append( std::to_string( static_cast< long long int > ( iRetVal ) ) );
+			#endif
+			iRetVal = 0;
+			break;
+		default:
+			break;
+	}
+
+	return iRetVal;
+}
+
+int ReAuthorize( const SSessionInfo &p_soSessInfo, const std::string & p_strFramedIPAddress, CIPConnector *p_pcoIPConn, std::string &p_strWhatWasDone )
+{
+	int iRetVal = 0;
+	int iFnRes;
+	char mcPack[ 0x1000 ];
+	__uint16_t ui16PackLen;
+	__uint16_t ui16ValueLen;
+	CPSPacket coPSPack;
+	SPSRequest *psoReq;
+
+	do {
+		psoReq = ( SPSRequest* ) mcPack;
+
+		iRetVal = SetCommonCoASensorAttr( psoReq, sizeof( mcPack ), p_soSessInfo, NULL, p_pcoIPConn );
+		if( 0 == iRetVal ) {
+		} else {
+			break;
+		}
+
+		/* добавляем атрибут Framed-IP-Address */
+		{
+			ui16PackLen = coPSPack.AddAttr(
+				psoReq, sizeof( mcPack ),
+				PS_FRAMEDIP, p_strFramedIPAddress.data(), static_cast< uint16_t >( p_strFramedIPAddress.length() ), 0 );
+		}
+
+		/* добавляем атрибут User-Name */
+		{
+			ui16PackLen = coPSPack.AddAttr(
+				psoReq, sizeof( mcPack ),
+				PS_USERNAME, p_soSessInfo.m_strUserName.data(), static_cast< uint16_t >( p_soSessInfo.m_strUserName.length() ), 0 );
+		}
+
+		// добавляем атрибут Service-Type
+		{
+			uint32_t uiServiceType = htonl( 8 ); /* Authenticate Only */
+			ui16PackLen = coPSPack.AddAttr(
+				psoReq, sizeof( mcPack ),
+				PS_SRVCTYPE, &uiServiceType, static_cast< uint16_t >( sizeof( uiServiceType ) ), 0 );
+		}
+
+		iRetVal = p_pcoIPConn->Send( mcPack, ui16PackLen );
+		if( 0 == iRetVal ) {
+		} else {
+			iRetVal = errno;
+			UTL_LOG_E( g_coLog, "p_pcoIPConn->Send: code: %d", iRetVal );
+			break;
+		}
+
+		iRetVal = p_pcoIPConn->Recv( mcPack, sizeof( mcPack ) );
+		if( 0 < iRetVal ) {
+			/* команда выполнена успешно */
+		} else if( 0 == iRetVal ) {
+			/* соединение закрыто сервером */
+			iRetVal = -1;
+			UTL_LOG_E( g_coLog, "p_pcoIPConn->Send: connection is closed" );
+			break;
+		} else if( 0 > iRetVal ) {
+			/* при выполнении команды произошла ошибка */
+			UTL_LOG_E( g_coLog, "p_pcoIPConn->Recv: code: %d", iRetVal );
+			break;
+		}
+		iRetVal = ParsePSPack( ( SPSRequest* ) mcPack, iRetVal );
+	} while( 0 );
+
+	switch( iRetVal ) {
+		case 0:
+		case -45:
+			p_strWhatWasDone.append( "\r\n\t\t'reauth' request is sent; result code: " );
 			#if __cplusplus <= 199711L
 				{
 					char mcInt[ 32 ];

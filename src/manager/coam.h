@@ -5,13 +5,16 @@
 #include "utils/ipconnector/ipconnector.h"
 #include "utils/timemeasurer/timemeasurer.h"
 #include "utils/coacommon.h"
+#include "utils/ps_common.h"
 
 #define ID_TYPE_SESSION_ID		"session_id"
 #define ID_TYPE_SUBSCRIBER_ID	"subscriber_id"
+#define ID_TYPE_UNAME_FIPA_NAS	"uNameFrIPAddrNAS" /* <userName>\t<framedIPAddress>\t<NASIPAddress> */
 
 #define ACTION_TYPE_LOGOFF			"logoff"
 #define ACTION_TYPE_CHECK_SESS		"checksession"
 #define ACTION_TYPE_CHECK_POLICY	"checkpolicy"
+#define ACTION_TYPE_REAUTHORIZE		"reauth"
 
 #define RESULT_SESSION_FIXED	(32768)
 
@@ -138,5 +141,8 @@ int ActivateService(
 int AccountLogoff( const SSessionInfo &p_soSessInfo, CIPConnector *p_pcoIPConn, std::string &p_strWhatWasDone );
 int CheckSession( const SSessionInfo &p_soSessInfo, CIPConnector *p_pcoIPConn, otl_connect &p_coDBConn, std::string &p_strWhatWasDone );
 int FixStuckSession (const SSessionInfo &p_soSessInfo, otl_connect &p_coDBConn, bool p_bOpt = false);
+
+int ReAuthorize( const SSessionInfo &p_soSessInfo, const std::string & p_strFramedIPAddress, CIPConnector *p_pcoIPConn, std::string &p_strWhatWasDone );
+
 int ParsePSPack (const SPSRequest *p_pcsoResp, size_t p_stRespLen, int p_iFindResult = 1);
 int DeleteRefreshRecord (const SRefreshRecord *p_pcsoSubscr, otl_connect &p_coDBConn);
